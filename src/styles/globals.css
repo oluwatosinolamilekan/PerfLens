@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0f1117;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2d3a;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3d4a;
+  }
+}
+
+@layer components {
+  .metric-card {
+    @apply bg-perf-surface border border-perf-border rounded-lg p-3 transition-all duration-200;
+  }
+
+  .metric-card:hover {
+    @apply border-perf-accent/30;
+  }
+
+  .badge-good {
+    @apply bg-perf-good/15 text-perf-good border border-perf-good/30;
+  }
+
+  .badge-moderate {
+    @apply bg-perf-moderate/15 text-perf-moderate border border-perf-moderate/30;
+  }
+
+  .badge-poor {
+    @apply bg-perf-poor/15 text-perf-poor border border-perf-poor/30;
+  }
+
+  .tab-button {
+    @apply px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 text-perf-muted hover:text-perf-text;
+  }
+
+  .tab-button-active {
+    @apply bg-perf-accent/15 text-perf-accent;
+  }
+
+  .skeleton {
+    @apply bg-perf-border/50 rounded animate-pulse-soft;
+  }
+}
