@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSettings, saveSettings, clearHistory, exportHistory } from '../utils/storage';
-import type { Settings, Message } from '../utils/types';
+import type { Settings, Message, AIAgent } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 function Toggle({
@@ -282,6 +282,44 @@ export const App: React.FC = () => {
                 </span>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* AI Fix Assistant */}
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-perf-muted uppercase tracking-wider mb-4">
+            AI Fix Assistant
+          </h2>
+          <div className="bg-perf-surface border border-perf-border rounded-xl p-5 space-y-4">
+            <div>
+              <label className="text-xs text-perf-muted">Default agent for "Fix it" actions</label>
+              <select
+                value={settings.aiFixAgent}
+                onChange={(e) => updateSetting('aiFixAgent', e.target.value as AIAgent)}
+                className="mt-1 w-44 bg-perf-bg border border-perf-border rounded-md px-3 py-2 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
+              >
+                <option value="cursor">Cursor</option>
+                <option value="claude">Claude</option>
+                <option value="codex">Codex</option>
+                <option value="custom">Custom agent</option>
+              </select>
+              <p className="text-xs text-perf-muted mt-1">
+                Used by audit and network fix prompts in localhost mode.
+              </p>
+            </div>
+
+            {settings.aiFixAgent === 'custom' && (
+              <div>
+                <label className="text-xs text-perf-muted">Custom agent name</label>
+                <input
+                  type="text"
+                  value={settings.customAIAgent}
+                  onChange={(e) => updateSetting('customAIAgent', e.target.value)}
+                  placeholder="e.g. Internal GPT Agent"
+                  className="mt-1 w-full bg-perf-bg border border-perf-border rounded-md px-3 py-2 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
+                />
+              </div>
+            )}
           </div>
         </section>
 

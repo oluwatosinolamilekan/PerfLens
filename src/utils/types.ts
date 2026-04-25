@@ -120,6 +120,8 @@ export interface Settings {
   autoAudit: boolean;
   showBadge: boolean;
   collectResources: boolean;
+  aiFixAgent: AIAgent;
+  customAIAgent: string;
   auditFrequency: 'pageload' | 'manual' | 'interval';
   auditInterval: number;
   thresholds: {
@@ -133,6 +135,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoAudit: true,
   showBadge: false,
   collectResources: true,
+  aiFixAgent: 'cursor',
+  customAIAgent: '',
   auditFrequency: 'pageload',
   auditInterval: 300000,
   thresholds: {
@@ -155,3 +159,5 @@ export interface Message {
   type: MessageType;
   payload?: unknown;
 }
+
+export type AIAgent = 'cursor' | 'claude' | 'codex' | 'custom';

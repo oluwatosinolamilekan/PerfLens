@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import type { ResourceMetrics } from '../utils/types';
+import type { ResourceMetrics, AIAgent } from '../utils/types';
+import { FixItActions } from './FixItActions';
 
 interface ResourceBreakdownProps {
   resources: ResourceMetrics;
+  showFixActions?: boolean;
+  defaultAgent?: AIAgent;
+  defaultCustomAgentName?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -47,7 +51,12 @@ function truncateUrl(url: string, maxLen = 55): string {
   }
 }
 
-export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({ resources }) => {
+export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({
+  resources,
+  showFixActions = false,
+  defaultAgent = 'cursor',
+  defaultCustomAgentName = '',
+}) => {
   const [showAll, setShowAll] = useState(false);
 
   const types = Object.entries(resources.byType)
@@ -172,23 +181,36 @@ export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({ resources 
         </div>
         <div className="space-y-1">
           {displayedLargest.map((r, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-2.5 py-1.5 bg-perf-surface border border-perf-border rounded-md hover:border-perf-border/80 transition-colors"
-            >
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: TYPE_COLORS[r.type] || '#8b8fa3' }}
-              />
-              <span className="flex-1 text-[10px] font-mono text-perf-muted truncate" title={r.name}>
-                {truncateUrl(r.name)}
-              </span>
-              <span className="text-[10px] font-semibold text-perf-text shrink-0">
-                {formatBytes(r.size)}
-              </span>
-              <span className="text-[9px] text-perf-muted/60 shrink-0 w-12 text-right">
-                {Math.round(r.duration)}ms
-              </span>
+            <div key={i} className="bg-perf-surface border border-perf-border rounded-md hover:border-perf-border/80 transition-colors p-2">
+              <div className="flex items-center gap-2 px-0.5 py-0.5">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: TYPE_COLORS[r.type] || '#8b8fa3' }}
+                />
+                <span className="flex-1 text-[10px] font-mono text-perf-muted truncate" title={r.name}>
+                  {truncateUrl(r.name)}
+                </span>
+                <span className="text-[10px] font-semibold text-perf-text shrink-0">
+                  {formatBytes(r.size)}
+                </span>
+                <span className="text-[9px] text-perf-muted/60 shrink-0 w-12 text-right">
+                  {Math.round(r.duration)}ms
+                </span>
+              </div>
+              {showFixActions && (r.size > 160_000 || r.duration > 250) && (
+                <div className="mt-1.5">
+                  <FixItActions
+                    compact
+                    defaultAgent={defaultAgent}
+                    defaultCustomAgentName={defaultCustomAgentName}
+                    category="Network"
+                    issueTitle="Large or slow network resource"
+                    issueDescription={`${r.type} resource may be too heavy or slow (${formatBytes(r.size)} / ${Math.round(r.duration)}ms).`}
+                    suggestion="Optimize transfer size, enable compression and caching, or lazy-load/defer where possible."
+                    resource={r.name}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

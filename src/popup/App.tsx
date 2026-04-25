@@ -6,7 +6,9 @@ import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { getFrameworkLogo } from '../assets/framework-logos';
-import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message } from '../utils/types';
+import { getSettings } from '../utils/storage';
+import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings } from '../utils/types';
+import { DEFAULT_SETTINGS } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
 
@@ -44,6 +46,7 @@ export const App: React.FC = () => {
   const [currentUrl, setCurrentUrl] = useState('');
   const [auditData, setAuditData] = useState<AuditData | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
   const fetchAuditData = useCallback(async () => {
     try {
@@ -91,6 +94,9 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     fetchAuditData();
+    getSettings().then(setSettings).catch(() => {
+      // keep defaults when settings cannot be loaded
+    });
 
     const handleMessage = (message: Message) => {
       if (message.type === 'METRICS_COLLECTED') {
@@ -129,7 +135,7 @@ export const App: React.FC = () => {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'audits', label: 'Audits' },
-    { id: 'resources', label: 'Resources' },
+    { id: 'resources', label: 'Network' },
     { id: 'history', label: 'History' },
   ];
 
@@ -298,7 +304,12 @@ export const App: React.FC = () => {
 
             {tab === 'audits' && (
               <div className="space-y-4">
-                <AuditResults audits={auditData.audits} />
+                <AuditResults
+                  audits={auditData.audits}
+                  showFixActions={runtimeMode === 'local'}
+                  defaultAgent={settings.aiFixAgent}
+                  defaultCustomAgentName={settings.customAIAgent}
+                />
                 {auditData.suggestions.length > 0 && (
                   <div>
                     <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider mb-2 px-1">
@@ -311,7 +322,12 @@ export const App: React.FC = () => {
             )}
 
             {tab === 'resources' && (
-              <ResourceBreakdown resources={auditData.metrics.resources} />
+              <ResourceBreakdown
+                resources={auditData.metrics.resources}
+                showFixActions={runtimeMode === 'local'}
+                defaultAgent={settings.aiFixAgent}
+                defaultCustomAgentName={settings.customAIAgent}
+              />
             )}
 
             {tab === 'history' && <HistoryChart history={history} />}

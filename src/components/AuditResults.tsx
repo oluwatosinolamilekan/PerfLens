@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import type { AuditResult } from '../utils/types';
+import type { AuditResult, AIAgent } from '../utils/types';
+import { FixItActions } from './FixItActions';
 
 interface AuditResultsProps {
   audits: AuditResult[];
+  showFixActions?: boolean;
+  defaultAgent?: AIAgent;
+  defaultCustomAgentName?: string;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -49,7 +53,17 @@ function truncateUrl(url: string, maxLen = 60): string {
   }
 }
 
-const AuditCategory: React.FC<{ audit: AuditResult }> = ({ audit }) => {
+const AuditCategory: React.FC<{
+  audit: AuditResult;
+  showFixActions?: boolean;
+  defaultAgent?: AIAgent;
+  defaultCustomAgentName?: string;
+}> = ({
+  audit,
+  showFixActions = false,
+  defaultAgent = 'cursor',
+  defaultCustomAgentName = '',
+}) => {
   const [expanded, setExpanded] = useState(false);
   const icon = CATEGORY_ICONS[audit.category] || '📋';
   const scoreStyle = getScoreStyle(audit.score);
@@ -131,6 +145,18 @@ const AuditCategory: React.FC<{ audit: AuditResult }> = ({ audit }) => {
                   </svg>
                   <span className="leading-relaxed">{issue.suggestion}</span>
                 </div>
+                {showFixActions && (
+                  <FixItActions
+                    compact
+                    defaultAgent={defaultAgent}
+                    defaultCustomAgentName={defaultCustomAgentName}
+                    category={audit.category}
+                    issueTitle={audit.title}
+                    issueDescription={issue.description}
+                    suggestion={issue.suggestion}
+                    resource={issue.resource}
+                  />
+                )}
               </div>
             );
           })}
@@ -154,7 +180,12 @@ const AuditCategory: React.FC<{ audit: AuditResult }> = ({ audit }) => {
   );
 };
 
-export const AuditResults: React.FC<AuditResultsProps> = ({ audits }) => {
+export const AuditResults: React.FC<AuditResultsProps> = ({
+  audits,
+  showFixActions = false,
+  defaultAgent = 'cursor',
+  defaultCustomAgentName = '',
+}) => {
   const totalIssues = audits.reduce((sum, a) => sum + a.issues.length, 0);
   const passedCount = audits.filter((a) => a.passed).length;
 
@@ -171,7 +202,13 @@ export const AuditResults: React.FC<AuditResultsProps> = ({ audits }) => {
       </div>
       <div className="space-y-2">
         {audits.map((audit) => (
-          <AuditCategory key={audit.id} audit={audit} />
+          <AuditCategory
+            key={audit.id}
+            audit={audit}
+            showFixActions={showFixActions}
+            defaultAgent={defaultAgent}
+            defaultCustomAgentName={defaultCustomAgentName}
+          />
         ))}
       </div>
     </div>
