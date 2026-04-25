@@ -5,6 +5,7 @@ import { AuditResults } from '../components/AuditResults';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
+import { getFrameworkLogo } from '../assets/framework-logos';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
@@ -132,8 +133,13 @@ export const App: React.FC = () => {
     { id: 'history', label: 'History' },
   ];
 
-  const frameworkLabel = auditData?.metrics.framework?.name ?? 'Unknown';
+  const framework = auditData?.metrics.framework;
+  const frameworkLabel = framework?.primary?.name ?? framework?.name ?? 'Unknown';
+  const frameworkDetected = framework?.detected?.length
+    ? framework.detected
+    : [{ name: frameworkLabel, confidence: framework?.confidence ?? 'low', signal: 'fallback' as const }];
   const runtimeMode = auditData?.metrics.runtime?.mode ?? 'unknown';
+  const buildStatus = auditData?.metrics.runtime?.buildStatus ?? (runtimeMode === 'production' ? 'prod' : 'unknown');
   const runtimeLabel = runtimeMode.charAt(0).toUpperCase() + runtimeMode.slice(1);
   const modeChipClass =
     runtimeMode === 'local'
@@ -145,6 +151,19 @@ export const App: React.FC = () => {
           : runtimeMode === 'production'
             ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30'
             : 'text-perf-muted bg-perf-highlight border-perf-border';
+
+  const buildStatusClass =
+    buildStatus === 'prod'
+      ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
+      : buildStatus === 'dev'
+        ? 'text-amber-300 bg-amber-500/10 border-amber-500/30'
+        : 'text-perf-muted bg-perf-highlight border-perf-border';
+
+  const buildStatusLabel = buildStatus === 'prod' ? 'Prod build' : buildStatus === 'dev' ? 'Dev build' : 'Build unknown';
+  const buildStatusMessage =
+    buildStatus === 'prod'
+      ? 'Running against a production-like build.'
+      : 'For accurate performance results, run and audit the production build.';
 
   return (
     <div className="w-[400px] min-h-[500px] max-h-[600px] overflow-y-auto bg-perf-bg text-perf-text">
@@ -200,13 +219,28 @@ export const App: React.FC = () => {
           <p className="text-[10px] text-perf-muted mt-1 truncate font-mono" title={currentUrl}>
             {displayUrl}
           </p>
-          <div className="mt-2 flex items-center gap-1.5">
-            <span className="text-[9px] px-2 py-0.5 rounded-full border border-perf-border bg-perf-highlight text-perf-text">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-perf-border bg-perf-highlight text-perf-text inline-flex items-center gap-1">
+              <img src={getFrameworkLogo(frameworkLabel)} alt={`${frameworkLabel} logo`} className="w-3 h-3 rounded-sm" />
               Framework: {frameworkLabel}
             </span>
+            {frameworkDetected.slice(1, 4).map((candidate) => (
+              <span
+                key={`${candidate.name}-${candidate.signal}`}
+                className="text-[9px] px-1.5 py-0.5 rounded-full border border-perf-border bg-perf-highlight/70 text-perf-muted inline-flex items-center gap-1"
+                title={`Confidence: ${candidate.confidence}`}
+              >
+                <img src={getFrameworkLogo(candidate.name)} alt={`${candidate.name} logo`} className="w-3 h-3 rounded-sm" />
+                {candidate.name}
+              </span>
+            ))}
             <span className={`text-[9px] px-2 py-0.5 rounded-full border ${modeChipClass}`}>
               Mode: {runtimeLabel}
             </span>
+          </div>
+          <div className={`mt-2 rounded-md border px-2 py-1.5 ${buildStatusClass}`}>
+            <p className="text-[10px] font-semibold">{buildStatusLabel}</p>
+            <p className="text-[9px] mt-0.5">{buildStatusMessage}</p>
           </div>
         </div>
 

@@ -38,6 +38,12 @@
 - Quick wins section for easy fixes
 - Resource-specific recommendations with affected URLs
 
+### Framework + Environment Detection
+- Detects popular frameworks/libraries with confidence scoring (React, Vue, Angular, Svelte, Next.js, Nuxt, Gatsby, Remix, Astro, Solid, Qwik, Preact, Ember, Backbone, jQuery, Vanilla fallback)
+- Shows detected framework badges in the popup header
+- Always displays build status (`Prod build`, `Dev build`, `Build unknown`)
+- Warns when auditing a dev/unknown environment and recommends running a production build for accurate results
+
 ### Historical Tracking
 - **Performance over time** — SVG line chart showing score history
 - **Trend analysis** — improving / declining / stable indicators
@@ -95,7 +101,7 @@
 
 PerfLens uses a multi-layer architecture:
 
-1. **Content Script** — Injected into every page, collects performance data using the native [Performance API](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API), `PerformanceObserver` for Web Vitals, and DOM inspection for audit checks.
+1. **Content Script** — Injected into every page, collects performance data using the native [Performance API](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API), `PerformanceObserver` for Web Vitals, and DOM inspection for audit checks. It also performs framework and runtime/build-status heuristics.
 
 2. **Background Service Worker** — Orchestrates data collection, runs audit logic, manages Chrome badge updates, and persists results to `chrome.storage.local`.
 

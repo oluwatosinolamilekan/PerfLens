@@ -58,7 +58,17 @@ export interface PerformanceMetrics {
 
 export interface FrameworkInfo {
   name: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: FrameworkConfidence;
+  primary: FrameworkCandidate;
+  detected: FrameworkCandidate[];
+}
+
+export type FrameworkConfidence = 'high' | 'medium' | 'low';
+
+export interface FrameworkCandidate {
+  name: string;
+  confidence: FrameworkConfidence;
+  signal: 'dom-or-global' | 'script-source' | 'fallback';
 }
 
 export interface RuntimeInfo {
@@ -67,6 +77,8 @@ export interface RuntimeInfo {
   isDev: boolean;
   host: string;
   port: string | null;
+  buildStatus: 'prod' | 'dev' | 'unknown';
+  buildSignals: string[];
 }
 
 export interface AuditIssue {
