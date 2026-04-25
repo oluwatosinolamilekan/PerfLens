@@ -101,10 +101,17 @@ export interface AuditResult {
 export interface Suggestion {
   id: string;
   impact: 'high' | 'medium' | 'low';
+  effort: 'low' | 'medium' | 'high';
+  confidence: FrameworkConfidence;
   category: string;
   title: string;
   description: string;
   resources: string[];
+}
+
+export interface RootCauseStory {
+  summary: string;
+  bullets: string[];
 }
 
 export interface AuditReport {
@@ -114,6 +121,7 @@ export interface AuditReport {
   metrics: PerformanceMetrics;
   audits: AuditResult[];
   suggestions: Suggestion[];
+  rootCauseStory?: RootCauseStory;
 }
 
 export interface Settings {

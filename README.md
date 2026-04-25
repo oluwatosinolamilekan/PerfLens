@@ -35,8 +35,14 @@
 
 ### Actionable Suggestions
 - Prioritized by **estimated impact** (high / medium / low)
+- Includes **implementation effort** estimate (high / medium / low)
+- Includes **suggestion confidence** (high / medium / low) based on evidence quality
 - Quick wins section for easy fixes
 - Resource-specific recommendations with affected URLs
+
+### Root Cause Story
+- Auto-generated summary that explains likely bottlenecks behind the current score
+- Highlights top issue categories to focus first for fastest gains
 
 ### Framework + Environment Detection
 - Detects popular frameworks/libraries with confidence scoring (React, Vue, Angular, Svelte, Next.js, Nuxt, Gatsby, Remix, Astro, Solid, Qwik, Preact, Ember, Backbone, jQuery, Vanilla fallback)
@@ -55,6 +61,28 @@
 - Bar chart with percentage breakdown
 - Largest resources list with load times
 - Render-blocking resource identification
+
+---
+
+## Product Roadmap (Prioritized)
+
+### MVP (Now)
+- Root Cause Story — **Impact: High / Effort: Low** (implemented)
+- Suggestion confidence scoring — **Impact: High / Effort: Medium** (implemented)
+- Suggestion effort tagging — **Impact: Medium / Effort: Low** (implemented)
+- Smarter quick-win ranking (impact + effort + confidence) — **Impact: Medium / Effort: Low**
+
+### V2 (Next)
+- Framework-aware deep rules (React/Next/Vue-specific anti-patterns) — **Impact: High / Effort: Medium**
+- Third-party script ROI analyzer — **Impact: High / Effort: Medium-High**
+- Performance regression guard with baseline snapshots — **Impact: High / Effort: High**
+- What-if simulator for projected wins — **Impact: Medium-High / Effort: Medium**
+
+### Advanced
+- One-click patch preview for framework-specific fixes — **Impact: High / Effort: High**
+- User journey performance maps across multi-step flows — **Impact: High / Effort: High**
+- Energy/battery impact insights for CPU-heavy pages — **Impact: Medium-High / Effort: High**
+- Competitive benchmark mode against selected sites — **Impact: Medium / Effort: High**
 
 ---
 

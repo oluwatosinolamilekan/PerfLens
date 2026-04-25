@@ -1,5 +1,5 @@
 import { saveAudit, getAuditHistory, getSettings } from '../utils/storage';
-import type { AuditReport, PerformanceMetrics, Message } from '../utils/types';
+import type { AuditReport, PerformanceMetrics, Message, AuditResult, Suggestion, RootCauseStory } from '../utils/types';
 
 const currentAudits: Map<number, AuditReport> = new Map();
 
@@ -23,15 +23,20 @@ function clearBadge(tabId: number): void {
 
 async function handleMetricsCollected(
   tabId: number,
-  metrics: PerformanceMetrics
+  metrics: PerformanceMetrics & {
+    audits?: AuditResult[];
+    suggestions?: Suggestion[];
+    rootCauseStory?: RootCauseStory;
+  }
 ): Promise<void> {
   const auditReport: AuditReport = {
     url: metrics.url,
     timestamp: Date.now(),
     score: metrics.score,
     metrics,
-    audits: [],
-    suggestions: [],
+    audits: metrics.audits ?? [],
+    suggestions: metrics.suggestions ?? [],
+    rootCauseStory: metrics.rootCauseStory,
   };
 
   currentAudits.set(tabId, auditReport);

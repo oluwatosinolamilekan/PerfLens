@@ -7,7 +7,7 @@ import {
 } from '../utils/metrics-collector';
 import { detectFramework, detectRuntime } from '../utils/framework-detector';
 import { runFullAudit } from '../utils/auditor';
-import type { PerformanceMetrics, Message, Settings } from '../utils/types';
+import type { PerformanceMetrics, Message, Settings, RootCauseStory } from '../utils/types';
 
 let hasCollected = false;
 let floatingBadge: HTMLElement | null = null;
@@ -37,12 +37,17 @@ async function collectAllMetrics(): Promise<PerformanceMetrics> {
 async function performCollection(): Promise<void> {
   try {
     const metrics = await collectAllMetrics();
-    const { audits, suggestions } = runFullAudit(metrics.resources);
+    const { audits, suggestions, rootCauseStory } = runFullAudit(metrics.resources);
 
-    const payload = {
+    const payload: PerformanceMetrics & {
+      audits: ReturnType<typeof runFullAudit>['audits'];
+      suggestions: ReturnType<typeof runFullAudit>['suggestions'];
+      rootCauseStory: RootCauseStory;
+    } = {
       ...metrics,
       audits,
       suggestions,
+      rootCauseStory,
     };
 
     chrome.runtime.sendMessage(

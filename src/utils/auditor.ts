@@ -1,4 +1,4 @@
-import type { ResourceMetrics, ResourceInfo, AuditResult, AuditIssue, Suggestion } from './types';
+import type { ResourceMetrics, ResourceInfo, AuditResult, AuditIssue, Suggestion, RootCauseStory } from './types';
 
 function createAudit(
   id: string,
@@ -462,9 +462,13 @@ export function generateSuggestions(audits: AuditResult[]): Suggestion[] {
 
   for (const audit of audits) {
     for (const issue of audit.issues) {
+      const effort = inferEffort(issue.suggestion, issue.severity);
+      const confidence = inferConfidence(issue, audit.category);
       suggestions.push({
         id: `suggestion-${idCounter++}`,
         impact: issue.severity,
+        effort,
+        confidence,
         category: audit.category,
         title: issue.suggestion,
         description: issue.description,
@@ -485,6 +489,84 @@ export function generateSuggestions(audits: AuditResult[]): Suggestion[] {
   });
 }
 
+function inferEffort(suggestion: string, severity: AuditIssue['severity']): Suggestion['effort'] {
+  const normalized = suggestion.toLowerCase();
+  if (
+    normalized.includes('add ') ||
+    normalized.includes('enable ') ||
+    normalized.includes('set ') ||
+    normalized.includes('defer') ||
+    normalized.includes('async')
+  ) {
+    return 'low';
+  }
+  if (
+    normalized.includes('split') ||
+    normalized.includes('inline critical css') ||
+    normalized.includes('remove unused') ||
+    normalized.includes('srcset')
+  ) {
+    return 'medium';
+  }
+  if (severity === 'high') {
+    return 'high';
+  }
+  return 'medium';
+}
+
+function inferConfidence(issue: AuditIssue, category: string): Suggestion['confidence'] {
+  if (issue.resource) {
+    return 'high';
+  }
+
+  const desc = issue.description.toLowerCase();
+  if (
+    desc.includes('approximately') ||
+    desc.includes('appear unused') ||
+    desc.includes('could benefit') ||
+    category === 'Accessibility'
+  ) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+export function generateRootCauseStory(audits: AuditResult[], score: number): RootCauseStory {
+  const allIssues = audits.flatMap((audit) => audit.issues.map((issue) => ({ audit, issue })));
+  const highIssues = allIssues.filter(({ issue }) => issue.severity === 'high');
+  const mediumIssues = allIssues.filter(({ issue }) => issue.severity === 'medium');
+
+  const topIssue = highIssues[0] ?? mediumIssues[0] ?? allIssues[0];
+  const summary =
+    score >= 90
+      ? 'Performance is strong overall. Remaining opportunities are mostly incremental and low risk.'
+      : topIssue
+        ? `Performance is held back mainly by ${topIssue.audit.category.toLowerCase()} issues, led by: ${topIssue.issue.description}`
+        : 'No major bottlenecks detected in this audit run.';
+
+  const bullets: string[] = [];
+  if (highIssues.length > 0) {
+    bullets.push(`${highIssues.length} high-impact issue${highIssues.length > 1 ? 's are' : ' is'} likely affecting user-perceived speed.`);
+  }
+  if (mediumIssues.length > 0) {
+    bullets.push(`${mediumIssues.length} medium-impact issue${mediumIssues.length > 1 ? 's add' : ' adds'} measurable overhead.`);
+  }
+  const topCategories = topIssue
+    ? audits
+        .filter((audit) => audit.issues.length > 0)
+        .sort((a, b) => b.issues.length - a.issues.length)
+        .slice(0, 2)
+        .map((audit) => audit.category)
+    : [];
+  if (topCategories.length > 0) {
+    bullets.push(`Focus first on ${topCategories.join(' and ')} to unlock the largest score gains.`);
+  } else {
+    bullets.push('Keep monitoring key pages to catch regressions early.');
+  }
+
+  return { summary, bullets };
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -496,6 +578,7 @@ function formatBytes(bytes: number): string {
 export function runFullAudit(resources: ResourceMetrics): {
   audits: AuditResult[];
   suggestions: Suggestion[];
+  rootCauseStory: RootCauseStory;
 } {
   const audits = [
     auditImages(resources),
@@ -507,5 +590,8 @@ export function runFullAudit(resources: ResourceMetrics): {
   ];
 
   const suggestions = generateSuggestions(audits);
-  return { audits, suggestions };
+  const overallScore =
+    audits.length > 0 ? Math.round(audits.reduce((sum, audit) => sum + audit.score, 0) / audits.length) : 0;
+  const rootCauseStory = generateRootCauseStory(audits, overallScore);
+  return { audits, suggestions, rootCauseStory };
 }

@@ -7,7 +7,7 @@ import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { getSettings } from '../utils/storage';
-import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings } from '../utils/types';
+import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
@@ -17,6 +17,7 @@ interface AuditData {
   metrics: PerformanceMetrics;
   audits: AuditResult[];
   suggestions: Suggestion[];
+  rootCauseStory?: RootCauseStory;
   score: number;
 }
 
@@ -60,11 +61,13 @@ export const App: React.FC = () => {
         const metricsPayload = audit.metrics as PerformanceMetrics & {
           audits?: AuditResult[];
           suggestions?: Suggestion[];
+          rootCauseStory?: RootCauseStory;
         };
         setAuditData({
           metrics: metricsPayload,
           audits: metricsPayload.audits ?? audit.audits ?? [],
           suggestions: metricsPayload.suggestions ?? audit.suggestions ?? [],
+          rootCauseStory: metricsPayload.rootCauseStory ?? audit.rootCauseStory,
           score: audit.score,
         });
       }
@@ -292,6 +295,22 @@ export const App: React.FC = () => {
                   <ScoreGauge score={auditData.score} size={140} />
                 </div>
                 <MetricsGrid vitals={auditData.metrics.vitals} />
+                {auditData.rootCauseStory && (
+                  <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
+                    <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider mb-1.5">
+                      Root Cause Story
+                    </p>
+                    <p className="text-xs text-perf-text leading-relaxed">{auditData.rootCauseStory.summary}</p>
+                    <ul className="mt-2 space-y-1">
+                      {auditData.rootCauseStory.bullets.slice(0, 3).map((bullet, index) => (
+                        <li key={index} className="text-[11px] text-perf-muted flex items-start gap-1.5">
+                          <span className="text-perf-accent mt-0.5">•</span>
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {auditData.suggestions.length > 0 && (
                   <div>
                     <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider mb-2 px-1">

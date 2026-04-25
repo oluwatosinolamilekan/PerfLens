@@ -12,6 +12,12 @@ const IMPACT_STYLES: Record<string, { bg: string; text: string; border: string }
   low: { bg: 'rgba(77,171,247,0.1)', text: '#4dabf7', border: 'rgba(77,171,247,0.25)' },
 };
 
+const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  high: { bg: 'rgba(0,200,83,0.1)', text: '#00c853', border: 'rgba(0,200,83,0.25)' },
+  medium: { bg: 'rgba(255,171,0,0.1)', text: '#ffab00', border: 'rgba(255,171,0,0.25)' },
+  low: { bg: 'rgba(139,143,163,0.15)', text: '#8b8fa3', border: 'rgba(139,143,163,0.35)' },
+};
+
 const CATEGORY_ICONS: Record<string, string> = {
   Images: '🖼',
   Scripts: '⚡',
@@ -35,6 +41,7 @@ const SuggestionItem: React.FC<{ suggestion: Suggestion }> = ({ suggestion }) =>
   const [expanded, setExpanded] = useState(false);
   const impactStyle = IMPACT_STYLES[suggestion.impact];
   const icon = CATEGORY_ICONS[suggestion.category] || '📋';
+  const confidenceStyle = CONFIDENCE_STYLES[suggestion.confidence];
 
   return (
     <div
@@ -62,6 +69,23 @@ const SuggestionItem: React.FC<{ suggestion: Suggestion }> = ({ suggestion }) =>
 
       {expanded && (
         <div className="border-t border-perf-border px-3 py-2 bg-perf-bg/50 space-y-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] text-perf-muted uppercase tracking-wider">Confidence</span>
+            <span
+              className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+              style={{
+                backgroundColor: confidenceStyle.bg,
+                color: confidenceStyle.text,
+                border: `1px solid ${confidenceStyle.border}`,
+              }}
+            >
+              {suggestion.confidence}
+            </span>
+            <span className="text-[9px] text-perf-muted uppercase tracking-wider ml-1">Effort</span>
+            <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded border border-perf-border text-perf-muted">
+              {suggestion.effort}
+            </span>
+          </div>
           <p className="text-xs text-perf-muted leading-relaxed">{suggestion.description}</p>
           {suggestion.resources.length > 0 && (
             <div className="space-y-1">
