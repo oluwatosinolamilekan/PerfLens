@@ -132,6 +132,20 @@ export const App: React.FC = () => {
     { id: 'history', label: 'History' },
   ];
 
+  const frameworkLabel = auditData?.metrics.framework?.name ?? 'Unknown';
+  const runtimeMode = auditData?.metrics.runtime?.mode ?? 'unknown';
+  const runtimeLabel = runtimeMode.charAt(0).toUpperCase() + runtimeMode.slice(1);
+  const modeChipClass =
+    runtimeMode === 'local'
+      ? 'text-blue-300 bg-blue-500/15 border-blue-500/30'
+      : runtimeMode === 'development'
+        ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+        : runtimeMode === 'staging'
+          ? 'text-violet-300 bg-violet-500/15 border-violet-500/30'
+          : runtimeMode === 'production'
+            ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30'
+            : 'text-perf-muted bg-perf-highlight border-perf-border';
+
   return (
     <div className="w-[400px] min-h-[500px] max-h-[600px] overflow-y-auto bg-perf-bg text-perf-text">
       {/* Header */}
@@ -186,6 +200,14 @@ export const App: React.FC = () => {
           <p className="text-[10px] text-perf-muted mt-1 truncate font-mono" title={currentUrl}>
             {displayUrl}
           </p>
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="text-[9px] px-2 py-0.5 rounded-full border border-perf-border bg-perf-highlight text-perf-text">
+              Framework: {frameworkLabel}
+            </span>
+            <span className={`text-[9px] px-2 py-0.5 rounded-full border ${modeChipClass}`}>
+              Mode: {runtimeLabel}
+            </span>
+          </div>
         </div>
 
         {/* Tabs */}

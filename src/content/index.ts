@@ -5,6 +5,7 @@ import {
   collectMemoryInfo,
   calculatePerformanceScore,
 } from '../utils/metrics-collector';
+import { detectFramework, detectRuntime } from '../utils/framework-detector';
 import { runFullAudit } from '../utils/auditor';
 import type { PerformanceMetrics, Message, Settings } from '../utils/types';
 
@@ -16,6 +17,8 @@ async function collectAllMetrics(): Promise<PerformanceMetrics> {
   const vitals = await collectWebVitals();
   const resources = collectResourceMetrics();
   const memory = collectMemoryInfo();
+  const framework = detectFramework();
+  const runtime = detectRuntime();
   const score = calculatePerformanceScore(vitals, navigation);
 
   return {
@@ -23,6 +26,8 @@ async function collectAllMetrics(): Promise<PerformanceMetrics> {
     vitals,
     resources,
     memory,
+    framework,
+    runtime,
     score,
     timestamp: Date.now(),
     url: window.location.href,

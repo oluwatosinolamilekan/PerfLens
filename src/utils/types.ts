@@ -49,9 +49,24 @@ export interface PerformanceMetrics {
   vitals: WebVitals;
   resources: ResourceMetrics;
   memory: MemoryInfo | null;
+  framework: FrameworkInfo;
+  runtime: RuntimeInfo;
   score: number;
   timestamp: number;
   url: string;
+}
+
+export interface FrameworkInfo {
+  name: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface RuntimeInfo {
+  mode: 'local' | 'development' | 'production' | 'staging' | 'unknown';
+  isLocal: boolean;
+  isDev: boolean;
+  host: string;
+  port: string | null;
 }
 
 export interface AuditIssue {
