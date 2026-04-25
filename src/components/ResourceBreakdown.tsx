@@ -7,6 +7,8 @@ interface ResourceBreakdownProps {
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
+  pageUrl?: string;
+  projectName?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -56,6 +58,8 @@ export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({
   showFixActions = false,
   defaultAgent = 'cursor',
   defaultCustomAgentName = '',
+  pageUrl,
+  projectName,
 }) => {
   const [showAll, setShowAll] = useState(false);
 
@@ -208,6 +212,8 @@ export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({
                     issueDescription={`${r.type} resource may be too heavy or slow (${formatBytes(r.size)} / ${Math.round(r.duration)}ms).`}
                     suggestion="Optimize transfer size, enable compression and caching, or lazy-load/defer where possible."
                     resource={r.name}
+                    pageUrl={pageUrl}
+                    projectName={projectName}
                   />
                 </div>
               )}

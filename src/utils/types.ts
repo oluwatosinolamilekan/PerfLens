@@ -161,3 +161,8 @@ export interface Message {
 }
 
 export type AIAgent = 'cursor' | 'claude' | 'codex' | 'custom';
+
+export interface AIFixContext {
+  pageUrl?: string;
+  projectName?: string;
+}

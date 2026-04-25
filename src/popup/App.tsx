@@ -11,6 +11,7 @@ import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message,
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
+const PROJECT_NAME = 'perflens';
 
 interface AuditData {
   metrics: PerformanceMetrics;
@@ -309,6 +310,8 @@ export const App: React.FC = () => {
                   showFixActions={runtimeMode === 'local'}
                   defaultAgent={settings.aiFixAgent}
                   defaultCustomAgentName={settings.customAIAgent}
+                  pageUrl={currentUrl}
+                  projectName={PROJECT_NAME}
                 />
                 {auditData.suggestions.length > 0 && (
                   <div>
@@ -327,6 +330,8 @@ export const App: React.FC = () => {
                 showFixActions={runtimeMode === 'local'}
                 defaultAgent={settings.aiFixAgent}
                 defaultCustomAgentName={settings.customAIAgent}
+                pageUrl={currentUrl}
+                projectName={PROJECT_NAME}
               />
             )}
 

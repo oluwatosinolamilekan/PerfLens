@@ -7,6 +7,8 @@ interface AuditResultsProps {
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
+  pageUrl?: string;
+  projectName?: string;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -58,11 +60,15 @@ const AuditCategory: React.FC<{
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
+  pageUrl?: string;
+  projectName?: string;
 }> = ({
   audit,
   showFixActions = false,
   defaultAgent = 'cursor',
   defaultCustomAgentName = '',
+  pageUrl,
+  projectName,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const icon = CATEGORY_ICONS[audit.category] || '📋';
@@ -155,6 +161,8 @@ const AuditCategory: React.FC<{
                     issueDescription={issue.description}
                     suggestion={issue.suggestion}
                     resource={issue.resource}
+                    pageUrl={pageUrl}
+                    projectName={projectName}
                   />
                 )}
               </div>
@@ -185,6 +193,8 @@ export const AuditResults: React.FC<AuditResultsProps> = ({
   showFixActions = false,
   defaultAgent = 'cursor',
   defaultCustomAgentName = '',
+  pageUrl,
+  projectName,
 }) => {
   const totalIssues = audits.reduce((sum, a) => sum + a.issues.length, 0);
   const passedCount = audits.filter((a) => a.passed).length;
@@ -208,6 +218,8 @@ export const AuditResults: React.FC<AuditResultsProps> = ({
             showFixActions={showFixActions}
             defaultAgent={defaultAgent}
             defaultCustomAgentName={defaultCustomAgentName}
+            pageUrl={pageUrl}
+            projectName={projectName}
           />
         ))}
       </div>
