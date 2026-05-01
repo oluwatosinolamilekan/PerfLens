@@ -22,6 +22,14 @@ program
       console.log(
         `  Overall ${report.aggregate.overall} | Perf ${report.aggregate.performance} | SEO ${report.aggregate.seo} | A11y ${report.aggregate.accessibility} | Sec ${report.aggregate.security} | Carbon ${report.aggregate.carbon}`
       );
+      if (report.launchReadiness) {
+        console.log(
+          `Launch readiness: ${report.launchReadiness.score}/100 (${report.launchReadiness.status})`
+        );
+      }
+      if (report.evidencePack?.artifactPath) {
+        console.log(`Tech Nation evidence pack: ${report.evidencePack.artifactPath}`);
+      }
       process.exit(0);
     } catch (error) {
       console.error("Audit failed:", error instanceof Error ? error.message : String(error));

@@ -1,6 +1,6 @@
 # PerfLens — Web Performance Auditor
 
-> Real-time performance monitoring, Lighthouse-like scoring, and actionable optimization suggestions right in your browser.
+> Real-time performance monitoring, Lighthouse-style scoring, launch readiness evidence, and actionable optimization suggestions right in your browser.
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853)](https://developer.chrome.com/docs/extensions/mv3/intro/)
@@ -33,12 +33,7 @@
 - **Compression Check** — flags uncompressed text resources that could use gzip/Brotli
 - **Accessibility Basics** — missing alt text, lang attribute, viewport meta, heading hierarchy, unlabeled forms
 
-### Phase 1 URL Audit Engine
-- Analyze any public `http` or `https` URL from the CLI, REST API, or extension popup
-- Score **Performance**, **SEO**, **Accessibility**, **Security**, and **Carbon footprint** from 0-100
-- Generate one unified desktop + mobile JSON report with prioritized issues
-- Capture full-page screenshots and page-load videos for desktop and mobile runs
-- Store report artifacts under `audit-results/<host>-<timestamp>/`
+
 
 ### Actionable Suggestions
 - Prioritized by **estimated impact** (high / medium / low)
@@ -50,6 +45,11 @@
 ### Root Cause Story
 - Auto-generated summary that explains likely bottlenecks behind the current score
 - Highlights top issue categories to focus first for fastest gains
+
+### First-Launch Evidence Pack
+- Desktop and mobile audits in one report, with screenshots, videos, category scores, and top fixes
+- Launch readiness gate that blends performance, accessibility, security, mobile parity, carbon, and issue severity
+- "Better than Lighthouse" signals that show product differentiation: live extension diagnostics, platform artifacts, sustainability scoring, and AI-ready fix prompts
 
 ### Framework + Environment Detection
 - Detects popular frameworks/libraries with confidence scoring (React, Vue, Angular, Svelte, Next.js, Nuxt, Gatsby, Remix, Astro, Solid, Qwik, Preact, Ember, Backbone, jQuery, Vanilla fallback)
@@ -143,6 +143,11 @@ npm run audit -- https://example.com
 npm run audit:api
 ```
 
+Each CLI run writes:
+
+- `unified-report.json` — machine-readable desktop/mobile audit with aggregate scores and prioritized issues
+- Desktop and mobile screenshots/videos for inspection and portfolio proof
+
 API request:
 
 ```bash
@@ -151,7 +156,7 @@ curl -X POST http://localhost:8787/api/audit \
   -d '{"url":"https://example.com"}'
 ```
 
-Output includes aggregate scores, desktop/mobile reports, artifact paths for screenshots and videos, and the top prioritized issues.
+Output includes aggregate scores, launch-readiness status, desktop/mobile reports, artifact paths for screenshots and videos, the evidence pack path, and the top prioritized issues.
 
 GitHub Actions CI support is available in `.github/workflows/audit.yml`.
 

@@ -61,6 +61,140 @@ function makeFix(issue) {
   };
 }
 
+function getSeverityWeight(issue) {
+  if (issue.severity === "high") return 3;
+  if (issue.severity === "medium") return 2;
+  return 1;
+}
+
+function summarizeIssues(issues) {
+  return {
+    high: issues.filter((issue) => issue.severity === "high").length,
+    medium: issues.filter((issue) => issue.severity === "medium").length,
+    low: issues.filter((issue) => issue.severity === "low").length,
+    total: issues.length,
+  };
+}
+
+function buildLaunchReadiness({ desktop, mobile, aggregate, topIssues }) {
+  const criticalIssueCount = topIssues.filter((issue) => issue.severity === "high").length;
+  const mobileGap = desktop.scores.overall - mobile.scores.overall;
+  const score = clampScore(
+    aggregate.overall -
+      Math.max(0, 85 - aggregate.performance) * 0.45 -
+      Math.max(0, 85 - aggregate.accessibility) * 0.25 -
+      criticalIssueCount * 4 -
+      Math.max(0, mobileGap - 8) * 0.5
+  );
+
+  const blockers = [];
+  if (aggregate.performance < 75) {
+    blockers.push("Performance score is below the first-launch threshold of 75.");
+  }
+  if (aggregate.accessibility < 80) {
+    blockers.push("Accessibility score should be lifted before a public launch.");
+  }
+  if (aggregate.security < 85) {
+    blockers.push("Security checks found launch-sensitive risks.");
+  }
+  if (mobileGap > 12) {
+    blockers.push(`Mobile trails desktop by ${mobileGap} points.`);
+  }
+
+  const recommendations = topIssues
+    .slice()
+    .sort((a, b) => getSeverityWeight(b) - getSeverityWeight(a) || a.priority - b.priority)
+    .slice(0, 5)
+    .map((issue) => `${issue.category}: ${issue.description}`);
+
+  return {
+    score,
+    status: score >= 90 ? "ready" : score >= 75 ? "nearly-ready" : "needs-work",
+    blockers,
+    recommendations,
+  };
+}
+
+function buildDifferentiators({ aggregate, desktop, mobile }) {
+  return [
+    {
+      title: "Evidence beyond Lighthouse",
+      detail:
+        "PerfLens combines live extension diagnostics with repeatable desktop and mobile Playwright audits, screenshots, videos, and JSON artifacts.",
+    },
+    {
+      title: "Launch-readiness scoring",
+      detail: `The first-launch gate blends performance, accessibility, security, mobile parity, and issue severity into a ${aggregate.overall}/100 overall audit.`,
+    },
+    {
+      title: "Sustainability signal",
+      detail: `Estimated transfer carbon impact is tracked for desktop (${desktop.metrics.estimatedCo2gPerLoad}g CO2) and mobile (${mobile.metrics.estimatedCo2gPerLoad}g CO2).`,
+    },
+    {
+      title: "Developer action loop",
+      detail:
+        "Each priority issue includes an implementation direction and AI-agent-ready fix context instead of only a diagnostic label.",
+    },
+  ];
+}
+
+function buildEvidencePack({ url, aggregate, desktop, mobile, topIssues, launchReadiness, reportPath }) {
+  const desktopIssues = summarizeIssues(desktop.prioritizedIssues);
+  const mobileIssues = summarizeIssues(mobile.prioritizedIssues);
+
+  return {
+    title: "PerfLens Launch Evidence Pack",
+    url,
+    generatedAt: new Date().toISOString(),
+    summary:
+      `PerfLens audited ${url} across desktop and mobile, producing an overall score of ${aggregate.overall}/100 ` +
+      `and a launch-readiness score of ${launchReadiness.score}/100.`,
+    proofPoints: [
+      `Desktop score: ${desktop.scores.overall}/100 across performance, SEO, accessibility, security, and carbon.`,
+      `Mobile score: ${mobile.scores.overall}/100 across the same checks.`,
+      `Captured screenshots and videos for both form factors.`,
+      `Prioritized ${topIssues.length} launch issues with fix-ready guidance.`,
+      `Report artifact: ${reportPath}`,
+    ],
+    issueSummary: {
+      desktop: desktopIssues,
+      mobile: mobileIssues,
+    },
+    topFixes: topIssues.slice(0, 5).map((issue) => ({
+      category: issue.category,
+      severity: issue.severity,
+      description: issue.description,
+      suggestedFix: issue.aiFix?.after || issue.description,
+    })),
+  };
+}
+
+function evidenceMarkdown(evidencePack, differentiators) {
+  const lines = [
+    `# ${evidencePack.title}`,
+    "",
+    `URL: ${evidencePack.url}`,
+    `Generated: ${evidencePack.generatedAt}`,
+    "",
+    "## Summary",
+    evidencePack.summary,
+    "",
+    "## Proof Points",
+    ...evidencePack.proofPoints.map((point) => `- ${point}`),
+    "",
+    "## Why This Goes Beyond Lighthouse",
+    ...differentiators.map((item) => `- ${item.title}: ${item.detail}`),
+    "",
+    "## Top Fixes",
+    ...evidencePack.topFixes.map(
+      (fix, index) => `${index + 1}. [${fix.severity}] ${fix.category}: ${fix.description}`
+    ),
+    "",
+  ];
+
+  return lines.join("\n");
+}
+
 async function runModeAudit({ page, url, mode, outputDir }) {
   const issues = [];
   const responses = [];
@@ -310,25 +444,48 @@ export async function runUnifiedAudit({ url, outputDir = DEFAULT_OUTPUT_DIR }) {
   try {
     const [desktop, mobile] = await Promise.all([executeMode("desktop"), executeMode("mobile")]);
 
+    const aggregate = {
+      performance: clampScore((desktop.scores.performance + mobile.scores.performance) / 2),
+      seo: clampScore((desktop.scores.seo + mobile.scores.seo) / 2),
+      accessibility: clampScore((desktop.scores.accessibility + mobile.scores.accessibility) / 2),
+      security: clampScore((desktop.scores.security + mobile.scores.security) / 2),
+      carbon: clampScore((desktop.scores.carbon + mobile.scores.carbon) / 2),
+      overall: clampScore((desktop.scores.overall + mobile.scores.overall) / 2),
+    };
+    const topIssues = [...desktop.prioritizedIssues, ...mobile.prioritizedIssues]
+      .sort((a, b) => a.priority - b.priority || getSeverityWeight(b) - getSeverityWeight(a))
+      .slice(0, 15);
+    const launchReadiness = buildLaunchReadiness({ desktop, mobile, aggregate, topIssues });
+    const differentiators = buildDifferentiators({ aggregate, desktop, mobile });
+
     const combined = {
       url,
       generatedAt: new Date().toISOString(),
       reports: { desktop, mobile },
-      aggregate: {
-        performance: clampScore((desktop.scores.performance + mobile.scores.performance) / 2),
-        seo: clampScore((desktop.scores.seo + mobile.scores.seo) / 2),
-        accessibility: clampScore((desktop.scores.accessibility + mobile.scores.accessibility) / 2),
-        security: clampScore((desktop.scores.security + mobile.scores.security) / 2),
-        carbon: clampScore((desktop.scores.carbon + mobile.scores.carbon) / 2),
-        overall: clampScore((desktop.scores.overall + mobile.scores.overall) / 2),
-      },
-      topIssues: [...desktop.prioritizedIssues, ...mobile.prioritizedIssues]
-        .sort((a, b) => a.priority - b.priority)
-        .slice(0, 15),
+      aggregate,
+      launchReadiness,
+      differentiators,
+      topIssues,
     };
 
     const reportPath = path.join(runOutputDir, "unified-report.json");
+    const evidencePack = buildEvidencePack({
+      url,
+      aggregate,
+      desktop,
+      mobile,
+      topIssues,
+      launchReadiness,
+      reportPath,
+    });
+    const evidencePath = path.join(runOutputDir, "tech-nation-evidence.md");
+    combined.evidencePack = {
+      ...evidencePack,
+      artifactPath: evidencePath,
+    };
+
     await fs.writeFile(reportPath, JSON.stringify(combined, null, 2), "utf8");
+    await fs.writeFile(evidencePath, evidenceMarkdown(evidencePack, differentiators), "utf8");
     return { report: combined, reportPath };
   } finally {
     await browser.close();

@@ -456,6 +456,156 @@ export function auditAccessibility(): AuditResult {
   return createAudit('accessibility', 'Accessibility Basics', 'Accessibility', issues, suggestions);
 }
 
+export function auditBestPractices(resources: ResourceMetrics): AuditResult {
+  const issues: AuditIssue[] = [];
+  const suggestions: string[] = [];
+
+  if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+    issues.push({
+      severity: 'high',
+      description: 'Page is served over HTTP instead of HTTPS',
+      suggestion: 'Serve the page over HTTPS to protect users and unlock modern browser features',
+    });
+  }
+
+  const insecureResources = resources.resources.filter((resource) => resource.name.startsWith('http://'));
+  insecureResources.slice(0, 5).forEach((resource) => {
+    issues.push({
+      severity: 'high',
+      description: 'Insecure resource loaded over HTTP',
+      resource: resource.name,
+      suggestion: 'Load all page assets over HTTPS to avoid mixed-content risk',
+    });
+  });
+
+  const unsafeExternalLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')).filter(
+    (link) => {
+      const rel = link.rel.toLowerCase();
+      return !rel.includes('noopener') && !rel.includes('noreferrer');
+    }
+  );
+  if (unsafeExternalLinks.length > 0) {
+    issues.push({
+      severity: 'medium',
+      description: `${unsafeExternalLinks.length} external link(s) open in a new tab without rel="noopener"`,
+      suggestion: 'Add rel="noopener noreferrer" to target="_blank" links',
+    });
+  }
+
+  const deprecatedTags = document.querySelectorAll('font, center, marquee, blink');
+  if (deprecatedTags.length > 0) {
+    issues.push({
+      severity: 'low',
+      description: `${deprecatedTags.length} deprecated HTML element(s) found`,
+      suggestion: 'Replace deprecated tags with semantic HTML and CSS',
+    });
+  }
+
+  const csp = document.querySelector('meta[http-equiv="Content-Security-Policy" i]');
+  if (!csp && window.location.protocol === 'https:') {
+    issues.push({
+      severity: 'low',
+      description: 'No Content Security Policy meta tag detected',
+      suggestion: 'Consider adding a Content Security Policy to reduce script injection risk',
+    });
+  }
+
+  if (issues.length > 0) {
+    suggestions.push('Use HTTPS for the page and every loaded asset');
+    suggestions.push('Harden links, headers, and legacy markup that can create security or compatibility issues');
+  }
+
+  return createAudit('best-practices', 'Best Practices', 'Best Practices', issues, suggestions);
+}
+
+export function auditSeoBasics(): AuditResult {
+  const issues: AuditIssue[] = [];
+  const suggestions: string[] = [];
+  const title = document.title.trim();
+
+  if (!title) {
+    issues.push({
+      severity: 'high',
+      description: 'Page is missing a title',
+      suggestion: 'Add a unique, descriptive title that explains the page content',
+    });
+  } else if (title.length < 10 || title.length > 70) {
+    issues.push({
+      severity: 'medium',
+      description: `Title length is ${title.length} characters`,
+      suggestion: 'Keep titles descriptive and roughly 10-70 characters long',
+    });
+  }
+
+  const description = document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content.trim() ?? '';
+  if (!description) {
+    issues.push({
+      severity: 'high',
+      description: 'Page is missing a meta description',
+      suggestion: 'Add a concise meta description that summarizes the page',
+    });
+  } else if (description.length < 50 || description.length > 160) {
+    issues.push({
+      severity: 'medium',
+      description: `Meta description length is ${description.length} characters`,
+      suggestion: 'Keep the meta description useful and roughly 50-160 characters long',
+    });
+  }
+
+  const h1s = document.querySelectorAll('h1');
+  if (h1s.length === 0) {
+    issues.push({
+      severity: 'medium',
+      description: 'Page has no h1 heading',
+      suggestion: 'Add one clear h1 that matches the main page topic',
+    });
+  } else if (h1s.length > 1) {
+    issues.push({
+      severity: 'low',
+      description: `Page has ${h1s.length} h1 headings`,
+      suggestion: 'Use one primary h1, then structure sub-sections with h2-h6 headings',
+    });
+  }
+
+  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href;
+  if (!canonical) {
+    issues.push({
+      severity: 'low',
+      description: 'Canonical link is missing',
+      suggestion: 'Add a canonical URL to help search engines understand the preferred page version',
+    });
+  }
+
+  const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'));
+  const vagueLinks = anchors.filter((anchor) => {
+    const text = anchor.textContent?.trim().toLowerCase() ?? '';
+    return ['click here', 'read more', 'learn more', 'more'].includes(text);
+  });
+  if (vagueLinks.length > 0) {
+    issues.push({
+      severity: 'low',
+      description: `${vagueLinks.length} link(s) use vague anchor text`,
+      suggestion: 'Use descriptive link text so users and search engines understand the destination',
+    });
+  }
+
+  const robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]')?.content.toLowerCase() ?? '';
+  if (robots.includes('noindex')) {
+    issues.push({
+      severity: 'high',
+      description: 'Robots meta tag contains noindex',
+      suggestion: 'Remove noindex when this page should appear in search results',
+    });
+  }
+
+  if (issues.length > 0) {
+    suggestions.push('Make title, description, headings, and links clearly describe the page');
+    suggestions.push('Add canonical metadata so search engines can identify the preferred URL');
+  }
+
+  return createAudit('seo', 'SEO Basics', 'SEO', issues, suggestions);
+}
+
 export function generateSuggestions(audits: AuditResult[]): Suggestion[] {
   const suggestions: Suggestion[] = [];
   let idCounter = 0;
@@ -587,6 +737,8 @@ export function runFullAudit(resources: ResourceMetrics): {
     auditCaching(resources),
     auditCompression(resources),
     auditAccessibility(),
+    auditBestPractices(resources),
+    auditSeoBasics(),
   ];
 
   const suggestions = generateSuggestions(audits);

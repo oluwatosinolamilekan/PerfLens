@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from '../utils/types';
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
 const PROJECT_NAME = 'perflens';
 const PLATFORM_AUDIT_API = 'http://localhost:8787/api/audit';
+type LighthouseCategoryId = 'performance' | 'accessibility' | 'best-practices' | 'seo';
 
 interface AuditData {
   metrics: PerformanceMetrics;
@@ -22,8 +23,25 @@ interface AuditData {
   score: number;
 }
 
+type LaunchReadinessStatus = 'ready' | 'nearly-ready' | 'needs-work';
+
 interface PlatformAuditReport {
   aggregate: Record<'performance' | 'seo' | 'accessibility' | 'security' | 'carbon' | 'overall', number>;
+  launchReadiness?: {
+    score: number;
+    status: LaunchReadinessStatus;
+    blockers: string[];
+    recommendations: string[];
+  };
+  differentiators?: Array<{
+    title: string;
+    detail: string;
+  }>;
+  evidencePack?: {
+    artifactPath: string;
+    summary: string;
+    proofPoints: string[];
+  };
   reports: Record<'desktop' | 'mobile', {
     artifacts: {
       screenshotPath: string;
@@ -36,6 +54,18 @@ interface PlatformAuditReport {
     severity: 'high' | 'medium' | 'low';
     description: string;
   }>;
+}
+
+function getLaunchStatusLabel(status: LaunchReadinessStatus): string {
+  if (status === 'ready') return 'Launch ready';
+  if (status === 'nearly-ready') return 'Nearly ready';
+  return 'Needs work';
+}
+
+function getLaunchStatusClass(status: LaunchReadinessStatus): string {
+  if (status === 'ready') return 'text-perf-good border-perf-good/30 bg-perf-good/10';
+  if (status === 'nearly-ready') return 'text-perf-moderate border-perf-moderate/30 bg-perf-moderate/10';
+  return 'text-perf-poor border-perf-poor/30 bg-perf-poor/10';
 }
 
 function LoadingSkeleton() {
@@ -57,6 +87,92 @@ function LoadingSkeleton() {
     </div>
   );
 }
+
+function getScoreTone(score: number): string {
+  if (score >= 90) return 'text-perf-good border-perf-good/30 bg-perf-good/10';
+  if (score >= 50) return 'text-perf-moderate border-perf-moderate/30 bg-perf-moderate/10';
+  return 'text-perf-poor border-perf-poor/30 bg-perf-poor/10';
+}
+
+function getLighthouseCategories(auditData: AuditData) {
+  const findAuditScore = (id: string, category: string) =>
+    auditData.audits.find((audit) => audit.id === id || audit.category === category)?.score ?? null;
+
+  return [
+    {
+      id: 'performance' as LighthouseCategoryId,
+      label: 'Performance',
+      score: auditData.score,
+      description: 'Checks loading speed, Core Web Vitals, render blocking work, and resource weight.',
+    },
+    {
+      id: 'accessibility' as LighthouseCategoryId,
+      label: 'Accessibility',
+      score: findAuditScore('accessibility', 'Accessibility'),
+      description: 'Looks for missing labels, alt text, headings, language, viewport, and keyboard-friendly basics.',
+    },
+    {
+      id: 'best-practices' as LighthouseCategoryId,
+      label: 'Best Practices',
+      score: findAuditScore('best-practices', 'Best Practices'),
+      description: 'Reviews HTTPS, mixed-content risk, safer external links, deprecated HTML, and security hints.',
+    },
+    {
+      id: 'seo' as LighthouseCategoryId,
+      label: 'SEO',
+      score: findAuditScore('seo', 'SEO'),
+      description: 'Checks title, meta description, h1 structure, canonical URL, robots, and descriptive links.',
+    },
+  ];
+}
+
+const LighthouseCategories: React.FC<{ auditData: AuditData; onOpenAudits: () => void }> = ({
+  auditData,
+  onOpenAudits,
+}) => {
+  const categories = getLighthouseCategories(auditData);
+
+  return (
+    <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
+            Lighthouse-style report
+          </p>
+          <p className="mt-1 text-[11px] text-perf-muted leading-relaxed">
+            PerfLens groups the live audit into the same areas people expect from Lighthouse, with quick context for what each score means.
+          </p>
+        </div>
+        <button
+          onClick={onOpenAudits}
+          className="shrink-0 rounded-md border border-perf-accent/30 bg-perf-accent/10 px-2 py-1 text-[10px] font-semibold text-perf-accent hover:bg-perf-accent/15 transition-colors"
+        >
+          View checks
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {categories.map((category) => {
+          const score = category.score ?? 0;
+          return (
+            <button
+              key={category.id}
+              onClick={onOpenAudits}
+              className={`text-left rounded-lg border p-2.5 transition-colors hover:border-perf-accent/40 ${getScoreTone(score)}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-perf-text">{category.label}</span>
+                <span className="text-sm font-bold tabular-nums">{category.score ?? '--'}</span>
+              </div>
+              <p className="mt-1.5 text-[10px] leading-relaxed text-perf-muted">
+                {category.description}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -377,6 +493,26 @@ export const App: React.FC = () => {
             )}
             {platformAudit && (
               <div className="mt-2 space-y-2">
+                {platformAudit.launchReadiness && (
+                  <div className={`rounded-md border px-2.5 py-2 ${getLaunchStatusClass(platformAudit.launchReadiness.status)}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider">
+                        First Launch Gate
+                      </p>
+                      <span className="text-xs font-bold">
+                        {platformAudit.launchReadiness.score}/100
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-medium">
+                      {getLaunchStatusLabel(platformAudit.launchReadiness.status)}
+                    </p>
+                    {platformAudit.launchReadiness.blockers.length > 0 && (
+                      <p className="mt-1 text-[11px] leading-relaxed">
+                        {platformAudit.launchReadiness.blockers[0]}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-5 gap-1 text-center">
                   {(['performance', 'seo', 'accessibility', 'security', 'carbon'] as const).map((category) => (
                     <div key={category} className="rounded-md bg-perf-highlight px-1 py-1.5">
@@ -389,6 +525,33 @@ export const App: React.FC = () => {
                   <p className="text-[11px] text-perf-muted leading-relaxed">
                     Top issue: {platformAudit.topIssues[0].description}
                   </p>
+                )}
+                {platformAudit.differentiators && platformAudit.differentiators.length > 0 && (
+                  <div className="rounded-md border border-perf-border bg-perf-bg/60 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
+                      Better-than-Lighthouse Signals
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {platformAudit.differentiators.slice(0, 3).map((item) => (
+                        <li key={item.title} className="text-[11px] text-perf-muted leading-relaxed">
+                          <span className="font-semibold text-perf-text">{item.title}:</span> {item.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {platformAudit.evidencePack && (
+                  <div className="rounded-md border border-perf-accent/25 bg-perf-accent/5 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold text-perf-accent uppercase tracking-wider">
+                      Tech Nation Evidence Pack
+                    </p>
+                    <p className="mt-1 text-[11px] text-perf-muted leading-relaxed">
+                      {platformAudit.evidencePack.summary}
+                    </p>
+                    <p className="mt-1 text-[9px] text-perf-muted/70 font-mono truncate" title={platformAudit.evidencePack.artifactPath}>
+                      {platformAudit.evidencePack.artifactPath}
+                    </p>
+                  </div>
                 )}
                 {platformReportPath && (
                   <p className="text-[9px] text-perf-muted/70 font-mono truncate" title={platformReportPath}>
@@ -436,6 +599,7 @@ export const App: React.FC = () => {
                 <div className="flex justify-center py-2">
                   <ScoreGauge score={auditData.score} size={140} />
                 </div>
+                <LighthouseCategories auditData={auditData} onOpenAudits={() => setTab('audits')} />
                 <MetricsGrid vitals={auditData.metrics.vitals} />
                 {auditData.rootCauseStory && (
                   <div className="rounded-lg border border-perf-border bg-perf-surface p-3">

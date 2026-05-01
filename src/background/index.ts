@@ -164,6 +164,14 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
 
     case 'GET_CURRENT_AUDIT': {
+      const requestedTabId = (message.payload as { tabId?: number } | undefined)?.tabId;
+      if (requestedTabId !== undefined) {
+        const audit = currentAudits.get(requestedTabId);
+        const error = auditErrors.get(requestedTabId) || null;
+        sendResponse({ audit: audit || null, error, tabId: requestedTabId });
+        return true;
+      }
+
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTabId = tabs[0]?.id;
         if (activeTabId !== undefined) {
@@ -178,6 +186,17 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
 
     case 'RE_AUDIT': {
+      const requestedTabId = (message.payload as { tabId?: number } | undefined)?.tabId;
+      if (requestedTabId !== undefined) {
+        clearBadge(requestedTabId);
+        currentAudits.delete(requestedTabId);
+        auditErrors.delete(requestedTabId);
+        requestMetricsCollection(requestedTabId).then((result) => {
+          sendResponse(result);
+        });
+        return true;
+      }
+
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTabId = tabs[0]?.id;
         if (activeTabId !== undefined) {
