@@ -3,7 +3,7 @@
   "name": "PerfLens - Web Performance Auditor",
   "description": "Real-time performance monitoring, scoring, and optimization suggestions for any website",
   "version": "1.0.0",
-  "permissions": ["storage", "activeTab", "tabs", "webNavigation"],
+  "permissions": ["storage", "activeTab", "tabs", "webNavigation", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",

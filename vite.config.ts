@@ -52,6 +52,7 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'public/popup.html'),
         options: resolve(__dirname, 'public/options.html'),
+        agentRedirect: resolve(__dirname, 'public/agent-redirect.html'),
         background: resolve(__dirname, 'src/background/index.ts'),
         content: resolve(__dirname, 'src/content/index.ts'),
       },

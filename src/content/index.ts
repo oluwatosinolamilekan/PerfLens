@@ -63,7 +63,12 @@ async function performCollection(): Promise<void> {
     updateFloatingBadge(metrics.score);
   } catch (err) {
     console.error('[PerfLens] Metrics collection error:', err);
+    throw err;
   }
+}
+
+function formatCollectionError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err || 'Unknown metrics collection error');
 }
 
 function createFloatingBadge(): HTMLElement {
@@ -199,16 +204,24 @@ chrome.runtime.onMessage.addListener(
   (message: Message, _sender, sendResponse) => {
     switch (message.type) {
       case 'COLLECT_METRICS': {
-        performCollection().then(() => {
-          sendResponse({ success: true });
-        });
+        performCollection()
+          .then(() => {
+            sendResponse({ success: true });
+          })
+          .catch((err) => {
+            sendResponse({ success: false, error: formatCollectionError(err) });
+          });
         return true;
       }
       case 'RE_AUDIT': {
         hasCollected = false;
-        performCollection().then(() => {
-          sendResponse({ success: true });
-        });
+        performCollection()
+          .then(() => {
+            sendResponse({ success: true });
+          })
+          .catch((err) => {
+            sendResponse({ success: false, error: formatCollectionError(err) });
+          });
         return true;
       }
       case 'SETTINGS_UPDATED': {

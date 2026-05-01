@@ -64,6 +64,7 @@ export const App: React.FC = () => {
   const [reauditing, setReauditing] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const [auditData, setAuditData] = useState<AuditData | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [platformAudit, setPlatformAudit] = useState<PlatformAuditReport | null>(null);
@@ -91,6 +92,9 @@ export const App: React.FC = () => {
           rootCauseStory: metricsPayload.rootCauseStory ?? audit.rootCauseStory,
           score: audit.score,
         });
+        setAuditError(null);
+      } else if (response?.error) {
+        setAuditError(response.error);
       }
 
       const [activeTab] = await chrome.tabs.query({
@@ -112,6 +116,7 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('[PerfLens] Failed to fetch audit data:', err);
+      setAuditError(err instanceof Error ? err.message : 'Failed to fetch audit data.');
     } finally {
       setLoading(false);
     }
@@ -134,12 +139,17 @@ export const App: React.FC = () => {
 
   const handleReaudit = async () => {
     setReauditing(true);
+    setAuditError(null);
     try {
-      await chrome.runtime.sendMessage({ type: 'RE_AUDIT' } as Message);
+      const response = await chrome.runtime.sendMessage({ type: 'RE_AUDIT' } as Message);
+      if (response?.success === false) {
+        throw new Error(response.error || 'Audit failed.');
+      }
       await new Promise((r) => setTimeout(r, 3000));
       await fetchAuditData();
     } catch (err) {
       console.error('[PerfLens] Re-audit failed:', err);
+      setAuditError(err instanceof Error ? err.message : 'Re-audit failed.');
     } finally {
       setReauditing(false);
     }
@@ -394,10 +404,23 @@ export const App: React.FC = () => {
         ) : !auditData ? (
           <div className="text-center py-12">
             <div className="text-3xl mb-3">🔍</div>
-            <p className="text-sm font-medium text-perf-text">No audit data yet</p>
-            <p className="text-xs text-perf-muted mt-1.5 max-w-[260px] mx-auto">
-              Navigate to a website and PerfLens will automatically audit its performance.
+            <p className="text-sm font-medium text-perf-text">
+              {auditError ? 'Audit could not run' : 'No audit data yet'}
             </p>
+            {auditError ? (
+              <div className="mt-2 mx-auto max-w-[300px] rounded-lg border border-perf-poor/25 bg-perf-poor/10 px-3 py-2 text-left">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-perf-poor">
+                  Error
+                </p>
+                <p className="mt-1 text-xs text-perf-text leading-relaxed break-words">
+                  {auditError}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-perf-muted mt-1.5 max-w-[260px] mx-auto">
+                Navigate to a website and PerfLens will automatically audit its performance.
+              </p>
+            )}
             <button
               onClick={handleReaudit}
               disabled={reauditing}

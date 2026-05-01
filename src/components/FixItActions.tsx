@@ -21,6 +21,12 @@ const AGENT_OPTIONS: Array<{ value: AIAgent; label: string }> = [
   { value: 'custom', label: 'Custom agent' },
 ];
 
+const AGENT_DOWNLOAD_URLS: Record<Exclude<AIAgent, 'custom'>, string> = {
+  cursor: 'https://cursor.com/download',
+  claude: 'https://claude.ai/download',
+  codex: 'https://openai.com/codex',
+};
+
 function getPrompt({
   issueTitle,
   issueDescription,
@@ -52,14 +58,24 @@ function getAgentOpenUrl(agent: AIAgent, prompt: string): string {
   const encodedPrompt = encodeURIComponent(prompt);
   switch (agent) {
     case 'cursor':
-      return `https://www.cursor.com/chat?prompt=${encodedPrompt}`;
+      return `https://cursor.com/link/prompt?text=${encodedPrompt}`;
     case 'claude':
-      return `https://claude.ai/new?q=${encodedPrompt}`;
+      return `claude://code/new?q=${encodedPrompt}`;
     case 'codex':
-      return `https://chat.openai.com/?q=${encodedPrompt}`;
+      return `codex://new?prompt=${encodedPrompt}`;
     case 'custom':
       return 'about:blank';
   }
+}
+
+function getAgentRedirectUrl(agent: Exclude<AIAgent, 'custom'>, prompt: string, label: string): string {
+  const params = new URLSearchParams({
+    appUrl: getAgentOpenUrl(agent, prompt),
+    fallbackUrl: AGENT_DOWNLOAD_URLS[agent],
+    agentName: label,
+  });
+
+  return chrome.runtime.getURL(`agent-redirect.html?${params.toString()}`);
 }
 
 export const FixItActions: React.FC<FixItActionsProps> = ({
@@ -107,7 +123,11 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
     setStatus('opening');
     try {
       await navigator.clipboard.writeText(prompt);
-      const opened = window.open(getAgentOpenUrl(selectedAgent, prompt), '_blank', 'noopener,noreferrer');
+      const agentUrl =
+        selectedAgent === 'cursor'
+          ? getAgentOpenUrl(selectedAgent, prompt)
+          : getAgentRedirectUrl(selectedAgent, prompt, selectedLabel);
+      const opened = window.open(agentUrl, '_blank', 'noopener,noreferrer');
       if (!opened) {
         setStatus('copied');
         setTimeout(() => setStatus('idle'), 2200);
@@ -128,7 +148,7 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
           Fix it with AI
         </p>
         {status === 'opening' && <span className="text-[9px] text-perf-muted font-medium">Opening...</span>}
-        {status === 'copied' && <span className="text-[9px] text-perf-good font-medium">Prompt copied, ready to paste</span>}
+        {status === 'copied' && <span className="text-[9px] text-perf-good font-medium">Prompt copied, opening app</span>}
       </div>
 
       <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -159,7 +179,7 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
           disabled={status === 'opening'}
           className="h-7 px-2.5 text-[10px] rounded bg-perf-accent/20 text-perf-accent hover:bg-perf-accent/30 transition-colors disabled:opacity-60"
         >
-          {selectedAgent === 'custom' ? `Use ${selectedLabel}` : `Open ${selectedLabel}`}
+          {selectedAgent === 'custom' ? `Use ${selectedLabel}` : `Open ${selectedLabel} app`}
         </button>
         <button
           onClick={handleCopyPrompt}
@@ -179,7 +199,7 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
       )}
 
       <p className="mt-1.5 text-[9px] text-perf-muted">
-        Opens web chat and copies prompt for quick paste.
+        Opens the desktop app when available and copies the prompt for quick paste.
       </p>
     </div>
   );

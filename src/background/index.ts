@@ -2,6 +2,7 @@ import { saveAudit, getAuditHistory, getSettings } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, Message, AuditResult, Suggestion, RootCauseStory } from '../utils/types';
 
 const currentAudits: Map<number, AuditReport> = new Map();
+const auditErrors: Map<number, string> = new Map();
 
 function getScoreColor(score: number): string {
   if (score >= 90) return '#00c853';
@@ -19,6 +20,37 @@ function updateBadge(tabId: number, score: number): void {
 
 function clearBadge(tabId: number): void {
   chrome.action.setBadgeText({ text: '', tabId });
+}
+
+function getAuditBlockedReason(url?: string): string | null {
+  if (!url) return 'No active page URL was found.';
+
+  if (/^https?:\/\//i.test(url)) return null;
+
+  if (/^file:\/\//i.test(url)) {
+    return 'PerfLens cannot audit file URLs unless file access is enabled for the extension in Chrome.';
+  }
+
+  return `PerfLens cannot audit this page type (${url.split(':')[0]}:). Open an http or https page and try again.`;
+}
+
+function formatCollectionError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err || 'Unknown error');
+
+  if (/Receiving end does not exist/i.test(message)) {
+    return 'PerfLens could not reach the page content script. Reload the page, then run the audit again.';
+  }
+
+  if (/Cannot access|Extension manifest must request permission|No tab with id/i.test(message)) {
+    return message;
+  }
+
+  return `Audit failed: ${message}`;
+}
+
+function isMissingContentScriptError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err || '');
+  return /Receiving end does not exist/i.test(message);
 }
 
 async function handleMetricsCollected(
@@ -40,6 +72,7 @@ async function handleMetricsCollected(
   };
 
   currentAudits.set(tabId, auditReport);
+  auditErrors.delete(tabId);
   updateBadge(tabId, metrics.score);
 
   try {
@@ -49,11 +82,42 @@ async function handleMetricsCollected(
   }
 }
 
-async function requestMetricsCollection(tabId: number): Promise<void> {
+async function requestMetricsCollection(tabId: number): Promise<{ success: boolean; error?: string }> {
   try {
-    await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_METRICS' } as Message);
-  } catch {
-    // content script not ready yet
+    const tab = await chrome.tabs.get(tabId);
+    const blockedReason = getAuditBlockedReason(tab.url);
+    if (blockedReason) {
+      auditErrors.set(tabId, blockedReason);
+      return { success: false, error: blockedReason };
+    }
+
+    let response;
+    try {
+      response = await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_METRICS' } as Message);
+    } catch (err) {
+      if (!isMissingContentScriptError(err)) {
+        throw err;
+      }
+
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js'],
+      });
+      response = await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_METRICS' } as Message);
+    }
+
+    if (response?.success === false) {
+      const error = response.error || 'The page rejected the audit request.';
+      auditErrors.set(tabId, error);
+      return { success: false, error };
+    }
+
+    auditErrors.delete(tabId);
+    return { success: true };
+  } catch (err) {
+    const error = formatCollectionError(err);
+    auditErrors.set(tabId, error);
+    return { success: false, error };
   }
 }
 
@@ -75,11 +139,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading') {
     clearBadge(tabId);
     currentAudits.delete(tabId);
+    auditErrors.delete(tabId);
   }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   currentAudits.delete(tabId);
+  auditErrors.delete(tabId);
 });
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
@@ -102,9 +168,10 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
         const activeTabId = tabs[0]?.id;
         if (activeTabId !== undefined) {
           const audit = currentAudits.get(activeTabId);
-          sendResponse({ audit: audit || null, tabId: activeTabId });
+          const error = auditErrors.get(activeTabId) || null;
+          sendResponse({ audit: audit || null, error, tabId: activeTabId });
         } else {
-          sendResponse({ audit: null });
+          sendResponse({ audit: null, error: 'No active tab found.' });
         }
       });
       return true;
@@ -116,11 +183,12 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
         if (activeTabId !== undefined) {
           clearBadge(activeTabId);
           currentAudits.delete(activeTabId);
-          requestMetricsCollection(activeTabId).then(() => {
-            sendResponse({ success: true });
+          auditErrors.delete(activeTabId);
+          requestMetricsCollection(activeTabId).then((result) => {
+            sendResponse(result);
           });
         } else {
-          sendResponse({ success: false });
+          sendResponse({ success: false, error: 'No active tab found.' });
         }
       });
       return true;
