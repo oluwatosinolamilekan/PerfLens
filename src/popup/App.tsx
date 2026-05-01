@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
 const PROJECT_NAME = 'perflens';
+const PLATFORM_AUDIT_API = 'http://localhost:8787/api/audit';
 
 interface AuditData {
   metrics: PerformanceMetrics;
@@ -19,6 +20,22 @@ interface AuditData {
   suggestions: Suggestion[];
   rootCauseStory?: RootCauseStory;
   score: number;
+}
+
+interface PlatformAuditReport {
+  aggregate: Record<'performance' | 'seo' | 'accessibility' | 'security' | 'carbon' | 'overall', number>;
+  reports: Record<'desktop' | 'mobile', {
+    artifacts: {
+      screenshotPath: string;
+      videoPath: string | null;
+    };
+  }>;
+  topIssues: Array<{
+    id: string;
+    category: string;
+    severity: 'high' | 'medium' | 'low';
+    description: string;
+  }>;
 }
 
 function LoadingSkeleton() {
@@ -49,6 +66,10 @@ export const App: React.FC = () => {
   const [auditData, setAuditData] = useState<AuditData | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [platformAudit, setPlatformAudit] = useState<PlatformAuditReport | null>(null);
+  const [platformReportPath, setPlatformReportPath] = useState<string | null>(null);
+  const [platformAuditing, setPlatformAuditing] = useState(false);
+  const [platformError, setPlatformError] = useState<string | null>(null);
 
   const fetchAuditData = useCallback(async () => {
     try {
@@ -121,6 +142,41 @@ export const App: React.FC = () => {
       console.error('[PerfLens] Re-audit failed:', err);
     } finally {
       setReauditing(false);
+    }
+  };
+
+  const handlePlatformAudit = async () => {
+    const targetUrl = currentUrl;
+    if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
+      setPlatformError('Open an http or https page first.');
+      return;
+    }
+
+    setPlatformAuditing(true);
+    setPlatformError(null);
+    setPlatformAudit(null);
+    setPlatformReportPath(null);
+
+    try {
+      const response = await fetch(PLATFORM_AUDIT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.message || payload?.error || 'Platform audit failed');
+      }
+      setPlatformAudit(payload.report);
+      setPlatformReportPath(payload.reportPath);
+    } catch (err) {
+      setPlatformError(
+        err instanceof Error
+          ? err.message
+          : 'Start the local audit API with npm run audit:api, then try again.'
+      );
+    } finally {
+      setPlatformAuditing(false);
     }
   };
 
@@ -211,6 +267,23 @@ export const App: React.FC = () => {
                 {reauditing ? 'Auditing...' : 'Re-audit'}
               </button>
               <button
+                onClick={handlePlatformAudit}
+                disabled={platformAuditing || loading}
+                className="flex items-center gap-1 text-[10px] font-medium text-emerald-300 hover:text-emerald-200 disabled:opacity-40 transition-all px-2 py-1 rounded-md hover:bg-emerald-500/10"
+                title="Run desktop and mobile platform audit"
+              >
+                <svg
+                  className={`w-3 h-3 ${platformAuditing ? 'animate-spin' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4V7m4 14H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" />
+                </svg>
+                {platformAuditing ? 'Running...' : 'Platform'}
+              </button>
+              <button
                 onClick={() => chrome.runtime.openOptionsPage()}
                 className="p-1 text-perf-muted hover:text-perf-text transition-colors rounded-md hover:bg-perf-highlight"
                 title="Settings"
@@ -270,6 +343,52 @@ export const App: React.FC = () => {
 
       {/* Content */}
       <div className="px-4 py-3">
+        {(platformAudit || platformError || platformAuditing) && (
+          <div className="mb-3 rounded-lg border border-perf-border bg-perf-surface p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
+                Platform Audit
+              </p>
+              {platformAudit && (
+                <span className="text-xs font-bold text-perf-text">
+                  {platformAudit.aggregate.overall}/100
+                </span>
+              )}
+            </div>
+            {platformAuditing && (
+              <p className="mt-2 text-xs text-perf-muted">
+                Capturing desktop and mobile screenshots, videos, and audit scores...
+              </p>
+            )}
+            {platformError && (
+              <p className="mt-2 text-xs text-perf-poor">
+                {platformError}
+              </p>
+            )}
+            {platformAudit && (
+              <div className="mt-2 space-y-2">
+                <div className="grid grid-cols-5 gap-1 text-center">
+                  {(['performance', 'seo', 'accessibility', 'security', 'carbon'] as const).map((category) => (
+                    <div key={category} className="rounded-md bg-perf-highlight px-1 py-1.5">
+                      <p className="text-[9px] text-perf-muted capitalize">{category === 'accessibility' ? 'A11y' : category}</p>
+                      <p className="text-xs font-semibold text-perf-text">{platformAudit.aggregate[category]}</p>
+                    </div>
+                  ))}
+                </div>
+                {platformAudit.topIssues.length > 0 && (
+                  <p className="text-[11px] text-perf-muted leading-relaxed">
+                    Top issue: {platformAudit.topIssues[0].description}
+                  </p>
+                )}
+                {platformReportPath && (
+                  <p className="text-[9px] text-perf-muted/70 font-mono truncate" title={platformReportPath}>
+                    {platformReportPath}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {loading ? (
           <LoadingSkeleton />
         ) : !auditData ? (

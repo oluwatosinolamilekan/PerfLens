@@ -1,0 +1,68 @@
+name: Web Audit Gate
+
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL to audit"
+        required: true
+        type: string
+      min_score:
+        description: "Minimum overall score"
+        required: false
+        default: "75"
+        type: string
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install --with-deps chromium
+
+      - name: Run unified audit
+        env:
+          AUDIT_URL: ${{ inputs.url || vars.AUDIT_URL }}
+          AUDIT_MIN_SCORE: ${{ inputs.min_score || vars.AUDIT_MIN_SCORE || '75' }}
+        run: npm run audit:ci
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-results
+          path: audit-results
+
+      - name: Comment PR with score summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = 'audit-results/ci-summary.json';
+            if (!fs.existsSync(summaryPath)) return;
+            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+            const deltaText = summary.delta == null ? 'n/a' : `${summary.delta > 0 ? '+' : ''}${summary.delta}`;
+            const body = [
+              '## PerfLens Unified Audit',
+              '',
+              `- URL: ${summary.url}`,
+              `- Overall score: **${summary.current}**`,
+              `- Previous score: ${summary.previous ?? 'n/a'}`,
+              `- Delta: ${deltaText}`,
+              `- Threshold: ${summary.threshold}`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

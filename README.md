@@ -33,6 +33,13 @@
 - **Compression Check** — flags uncompressed text resources that could use gzip/Brotli
 - **Accessibility Basics** — missing alt text, lang attribute, viewport meta, heading hierarchy, unlabeled forms
 
+### Phase 1 URL Audit Engine
+- Analyze any public `http` or `https` URL from the CLI, REST API, or extension popup
+- Score **Performance**, **SEO**, **Accessibility**, **Security**, and **Carbon footprint** from 0-100
+- Generate one unified desktop + mobile JSON report with prioritized issues
+- Capture full-page screenshots and page-load videos for desktop and mobile runs
+- Store report artifacts under `audit-results/<host>-<timestamp>/`
+
 ### Actionable Suggestions
 - Prioritized by **estimated impact** (high / medium / low)
 - Includes **implementation effort** estimate (high / medium / low)
@@ -123,6 +130,31 @@
    npm run dev
    ```
 
+
+### Platform Audit Mode (CLI/API/CI)
+
+PerfLens now includes a platform-oriented audit stack in addition to the browser extension:
+
+```bash
+# Run a unified audit (desktop + mobile) with screenshots/video + JSON report
+npm run audit -- https://example.com
+
+# Start REST API
+npm run audit:api
+```
+
+API request:
+
+```bash
+curl -X POST http://localhost:8787/api/audit \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+```
+
+Output includes aggregate scores, desktop/mobile reports, artifact paths for screenshots and videos, and the top prioritized issues.
+
+GitHub Actions CI support is available in `.github/workflows/audit.yml`.
+
 ---
 
 ## How It Works
@@ -133,9 +165,11 @@ PerfLens uses a multi-layer architecture:
 
 2. **Background Service Worker** — Orchestrates data collection, runs audit logic, manages Chrome badge updates, and persists results to `chrome.storage.local`.
 
-3. **Popup UI** — React application providing an at-a-glance performance dashboard with tabs for overview, detailed audits, resource analysis, and historical trends.
+3. **Popup UI** — React application providing an at-a-glance performance dashboard with tabs for overview, detailed audits, resource analysis, and historical trends. In phase 1 it can also call the local platform audit API for a full desktop + mobile URL audit.
 
 4. **Options Page** — Configure monitoring behavior, thresholds, and data management.
+
+5. **Platform Audit Engine** — Playwright-powered Node audit runner that loads a URL in desktop and mobile contexts, captures screenshots and videos, estimates transfer-based carbon impact, and emits a unified JSON report.
 
 All metrics are collected from browser-native APIs with **zero external network requests** — your data stays local.
 
@@ -205,6 +239,13 @@ perflens/
 │   │   └── storage.ts         # Chrome storage wrapper
 │   └── styles/
 │       └── globals.css        # Tailwind + custom styles
+├── scripts/
+│   ├── audit-engine.mjs       # Desktop/mobile platform audit engine
+│   ├── audit-cli.mjs          # CLI wrapper for URL audits
+│   ├── audit-api.mjs          # Local REST API used by the popup Platform button
+│   ├── audit-ci.mjs           # CI threshold runner
+│   └── launch-phase1.mjs      # Builds, starts API, and launches Chromium with extension
+├── audit-results/             # Generated reports, screenshots, and videos
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.json
