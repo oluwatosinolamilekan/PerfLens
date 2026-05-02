@@ -50,6 +50,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
+        index: resolve(__dirname, 'public/index.html'),
         popup: resolve(__dirname, 'public/popup.html'),
         options: resolve(__dirname, 'public/options.html'),
         devtools: resolve(__dirname, 'public/devtools.html'),

@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PerfLens is a browser-first performance auditor for live Core Web Vitals, launch evidence, history, and fix-ready optimization guidance."
+    />
+    <title>PerfLens - Web Performance Auditor</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #111827;
+        --muted: #5b6472;
+        --subtle: #eef3f8;
+        --line: #d7dee8;
+        --surface: #ffffff;
+        --surface-2: #f7fafc;
+        --blue: #1769e0;
+        --cyan: #0891b2;
+        --green: #0f9f6e;
+        --amber: #b7791f;
+        --red: #c2410c;
+        --violet: #6d5dfc;
+        --shadow: 0 24px 70px rgba(17, 24, 39, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page {
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .nav {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        left: 0;
+        right: 0;
+        border-bottom: 1px solid rgba(215, 222, 232, 0.78);
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(18px);
+      }
+
+      .nav-inner,
+      .section-inner,
+      .hero-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .nav-inner {
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 900;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        color: #fff;
+        background:
+          linear-gradient(135deg, var(--blue), var(--cyan) 54%, var(--green)),
+          var(--blue);
+        box-shadow: 0 12px 28px rgba(23, 105, 224, 0.28);
+      }
+
+      .brand-mark svg {
+        width: 21px;
+        height: 21px;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+      }
+
+      .nav-cta,
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 44px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        padding: 0 16px;
+        background: var(--surface);
+        color: var(--ink);
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .nav-cta,
+      .button.primary {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+      }
+
+      .button svg,
+      .nav-cta svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 94vh;
+        display: grid;
+        align-items: center;
+        padding: 116px 0 54px;
+        background:
+          linear-gradient(110deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 47%, rgba(255, 255, 255, 0.4) 100%),
+          -webkit-image-set(url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='920' viewBox='0 0 1400 920'%3E%3Crect width='1400' height='920' fill='%23eef3f8'/%3E%3Cg opacity='0.9'%3E%3Crect x='775' y='92' width='480' height='650' rx='22' fill='%23ffffff' stroke='%23d7dee8'/%3E%3Crect x='807' y='134' width='132' height='16' rx='8' fill='%231769e0'/%3E%3Crect x='807' y='176' width='384' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='807' y='210' width='170' height='170' rx='85' fill='%23eef8f5' stroke='%230f9f6e' stroke-width='18'/%3E%3Cpath d='M892 234a61 61 0 1 1-43 18' fill='none' stroke='%231769e0' stroke-width='18' stroke-linecap='round'/%3E%3Ctext x='862' y='316' font-family='Arial' font-size='48' font-weight='700' fill='%23111827'%3E94%3C/text%3E%3Crect x='1010' y='234' width='145' height='18' rx='9' fill='%230f9f6e'/%3E%3Crect x='1010' y='278' width='188' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='1010' y='306' width='142' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='807' y='430' width='384' height='78' rx='12' fill='%23f7fafc' stroke='%23d7dee8'/%3E%3Crect x='827' y='454' width='76' height='14' rx='7' fill='%231769e0'/%3E%3Crect x='827' y='480' width='246' height='10' rx='5' fill='%23c7d2de'/%3E%3Crect x='807' y='530' width='384' height='78' rx='12' fill='%23fff7ed' stroke='%23fed7aa'/%3E%3Crect x='827' y='554' width='92' height='14' rx='7' fill='%23b7791f'/%3E%3Crect x='827' y='580' width='282' height='10' rx='5' fill='%23e3c9a4'/%3E%3Crect x='807' y='630' width='384' height='78' rx='12' fill='%23f7fafc' stroke='%23d7dee8'/%3E%3Crect x='827' y='654' width='128' height='14' rx='7' fill='%236d5dfc'/%3E%3Crect x='827' y='680' width='230' height='10' rx='5' fill='%23c7d2de'/%3E%3C/g%3E%3Cg opacity='0.5'%3E%3Cpath d='M0 795C188 716 260 858 434 782C600 709 690 610 881 674C1054 732 1184 800 1400 690V920H0Z' fill='%23dff7ef'/%3E%3Cpath d='M0 842C210 760 355 900 545 822C720 750 884 817 1018 780C1170 738 1265 662 1400 720V920H0Z' fill='%23dceeff'/%3E%3C/g%3E%3C/svg%3E") type("image/svg+xml"))
+            center right / cover no-repeat;
+        background:
+          linear-gradient(110deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 47%, rgba(255, 255, 255, 0.4) 100%),
+          image-set(url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='920' viewBox='0 0 1400 920'%3E%3Crect width='1400' height='920' fill='%23eef3f8'/%3E%3Cg opacity='0.9'%3E%3Crect x='775' y='92' width='480' height='650' rx='22' fill='%23ffffff' stroke='%23d7dee8'/%3E%3Crect x='807' y='134' width='132' height='16' rx='8' fill='%231769e0'/%3E%3Crect x='807' y='176' width='384' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='807' y='210' width='170' height='170' rx='85' fill='%23eef8f5' stroke='%230f9f6e' stroke-width='18'/%3E%3Cpath d='M892 234a61 61 0 1 1-43 18' fill='none' stroke='%231769e0' stroke-width='18' stroke-linecap='round'/%3E%3Ctext x='862' y='316' font-family='Arial' font-size='48' font-weight='700' fill='%23111827'%3E94%3C/text%3E%3Crect x='1010' y='234' width='145' height='18' rx='9' fill='%230f9f6e'/%3E%3Crect x='1010' y='278' width='188' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='1010' y='306' width='142' height='12' rx='6' fill='%23d7dee8'/%3E%3Crect x='807' y='430' width='384' height='78' rx='12' fill='%23f7fafc' stroke='%23d7dee8'/%3E%3Crect x='827' y='454' width='76' height='14' rx='7' fill='%231769e0'/%3E%3Crect x='827' y='480' width='246' height='10' rx='5' fill='%23c7d2de'/%3E%3Crect x='807' y='530' width='384' height='78' rx='12' fill='%23fff7ed' stroke='%23fed7aa'/%3E%3Crect x='827' y='554' width='92' height='14' rx='7' fill='%23b7791f'/%3E%3Crect x='827' y='580' width='282' height='10' rx='5' fill='%23e3c9a4'/%3E%3Crect x='807' y='630' width='384' height='78' rx='12' fill='%23f7fafc' stroke='%23d7dee8'/%3E%3Crect x='827' y='654' width='128' height='14' rx='7' fill='%236d5dfc'/%3E%3Crect x='827' y='680' width='230' height='10' rx='5' fill='%23c7d2de'/%3E%3C/g%3E%3Cg opacity='0.5'%3E%3Cpath d='M0 795C188 716 260 858 434 782C600 709 690 610 881 674C1054 732 1184 800 1400 690V920H0Z' fill='%23dff7ef'/%3E%3Cpath d='M0 842C210 760 355 900 545 822C720 750 884 817 1018 780C1170 738 1265 662 1400 720V920H0Z' fill='%23dceeff'/%3E%3C/g%3E%3C/svg%3E") type("image/svg+xml"))
+            center right / cover no-repeat;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(420px, 0.8fr);
+        gap: 48px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        width: -moz-fit-content;
+        width: fit-content;
+        margin: 0 0 18px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--blue);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .eyebrow svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        font-size: clamp(56px, 8vw, 104px);
+        line-height: 0.91;
+        letter-spacing: 0;
+      }
+
+      .lede {
+        max-width: 660px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 21px;
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .hero-points {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 40px;
+        max-width: 760px;
+      }
+
+      .hero-point {
+        border: 1px solid rgba(215, 222, 232, 0.88);
+        border-radius: 8px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      .hero-point strong {
+        display: block;
+        font-size: 24px;
+      }
+
+      .hero-point span {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .product-shot {
+        position: relative;
+        border: 1px solid rgba(215, 222, 232, 0.88);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .shot-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 54px;
+        border-bottom: 1px solid var(--line);
+        padding: 0 16px;
+        background: var(--surface-2);
+      }
+
+      .window-controls {
+        display: flex;
+        gap: 7px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #f87171;
+      }
+
+      .dot:nth-child(2) {
+        background: #fbbf24;
+      }
+
+      .dot:nth-child(3) {
+        background: #34d399;
+      }
+
+      .shot-label {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .shot-body {
+        padding: 22px;
+      }
+
+      .score-row {
+        display: grid;
+        grid-template-columns: 132px 1fr;
+        gap: 22px;
+        align-items: center;
+      }
+
+      .dial {
+        display: grid;
+        place-items: center;
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at center, #fff 0 55%, transparent 56%),
+          conic-gradient(var(--green) 0 84%, #dbe4ee 84% 100%);
+      }
+
+      .dial strong {
+        font-size: 42px;
+      }
+
+      .metric-list {
+        display: grid;
+        gap: 9px;
+      }
+
+      .metric {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        font-size: 13px;
+      }
+
+      .metric em {
+        font-style: normal;
+        font-weight: 900;
+      }
+
+      .bar {
+        height: 8px;
+        border-radius: 99px;
+        background: var(--subtle);
+        overflow: hidden;
+      }
+
+      .bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--green);
+      }
+
+      .bar.warn span {
+        background: var(--amber);
+      }
+
+      .findings {
+        display: grid;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .finding {
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+      }
+
+      .finding svg {
+        width: 20px;
+        height: 20px;
+        color: var(--blue);
+      }
+
+      .finding strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .finding span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .tag {
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: #e8f7f1;
+        color: var(--green);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .section {
+        padding: 88px 0;
+      }
+
+      .section.alt {
+        background: var(--surface-2);
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(280px, 0.48fr);
+        gap: 36px;
+        align-items: end;
+        margin-bottom: 34px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(34px, 4vw, 56px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .section-head p,
+      .section-copy {
+        margin: 0;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.6;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        border: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .feature {
+        min-height: 220px;
+        padding: 24px;
+        background: var(--surface);
+      }
+
+      .feature svg {
+        width: 28px;
+        height: 28px;
+        color: var(--blue);
+      }
+
+      .feature strong {
+        display: block;
+        margin-top: 18px;
+        font-size: 18px;
+      }
+
+      .feature p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .workflow-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+        background: var(--surface);
+      }
+
+      .step span {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        color: #fff;
+        background: var(--ink);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .step strong {
+        display: block;
+        margin-top: 18px;
+      }
+
+      .step p {
+        margin: 9px 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .comparison {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .compare-panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .compare-panel h3 {
+        margin: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 18px 20px;
+        font-size: 18px;
+      }
+
+      .compare-panel ul {
+        display: grid;
+        gap: 14px;
+        margin: 0;
+        padding: 20px;
+        list-style: none;
+      }
+
+      .compare-panel li {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 10px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .compare-panel svg {
+        width: 20px;
+        height: 20px;
+        color: var(--green);
+      }
+
+      .compare-panel.lighthouse svg {
+        color: var(--amber);
+      }
+
+      .snapshot-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .snapshot-stack {
+        display: grid;
+        gap: 18px;
+      }
+
+      .snapshot-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: hidden;
+        box-shadow: 0 18px 44px rgba(17, 24, 39, 0.08);
+      }
+
+      .snapshot-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .snapshot-card figcaption {
+        border-top: 1px solid var(--line);
+        padding: 13px 16px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .snapshot-card.popup {
+        position: sticky;
+        top: 88px;
+      }
+
+      .snapshot-card.popup img {
+        aspect-ratio: 0.66;
+        -o-object-fit: cover;
+           object-fit: cover;
+        -o-object-position: top center;
+           object-position: top center;
+      }
+
+      .evidence-band {
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background:
+          linear-gradient(90deg, rgba(17, 24, 39, 0.91), rgba(17, 24, 39, 0.78)),
+          -webkit-image-set(url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='520' viewBox='0 0 1200 520'%3E%3Crect width='1200' height='520' fill='%23111827'/%3E%3Cg opacity='0.36' fill='none' stroke='%23ffffff'%3E%3Cpath d='M0 390C165 310 290 440 450 350S760 220 920 294s190 12 280-42'/%3E%3Cpath d='M0 315C190 236 290 330 438 276s245-130 402-69 220 134 360 58'/%3E%3Cpath d='M0 454C156 390 280 496 452 420s320-145 484-78 190 70 264 34'/%3E%3C/g%3E%3C/svg%3E") type("image/svg+xml"))
+            center / cover no-repeat;
+        background:
+          linear-gradient(90deg, rgba(17, 24, 39, 0.91), rgba(17, 24, 39, 0.78)),
+          image-set(url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='520' viewBox='0 0 1200 520'%3E%3Crect width='1200' height='520' fill='%23111827'/%3E%3Cg opacity='0.36' fill='none' stroke='%23ffffff'%3E%3Cpath d='M0 390C165 310 290 440 450 350S760 220 920 294s190 12 280-42'/%3E%3Cpath d='M0 315C190 236 290 330 438 276s245-130 402-69 220 134 360 58'/%3E%3Cpath d='M0 454C156 390 280 496 452 420s320-145 484-78 190 70 264 34'/%3E%3C/g%3E%3C/svg%3E") type("image/svg+xml"))
+            center / cover no-repeat;
+        color: #fff;
+      }
+
+      .evidence-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(360px, 0.54fr);
+        gap: 48px;
+        align-items: center;
+        min-height: 430px;
+        padding: 72px 0;
+      }
+
+      .evidence-inner p {
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .artifact-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .artifact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .artifact span {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+      }
+
+      .cta {
+        padding: 82px 0;
+        background: var(--surface);
+      }
+
+      .cta-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) auto;
+        gap: 24px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 28px;
+        background: var(--surface-2);
+      }
+
+      .cta h2 {
+        font-size: clamp(30px, 4vw, 48px);
+      }
+
+      .cta p {
+        margin: 12px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 28px 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .footer-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      @media (max-width: 980px) {
+        .hero-grid,
+        .section-head,
+        .evidence-inner,
+        .cta-inner {
+          grid-template-columns: 1fr;
+        }
+
+        .product-shot {
+          max-width: 620px;
+        }
+
+        .feature-grid,
+        .workflow-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .comparison {
+          grid-template-columns: 1fr;
+        }
+
+        .snapshot-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .snapshot-card.popup {
+          position: static;
+          max-width: 460px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .nav-inner,
+        .section-inner,
+        .hero-inner,
+        .evidence-inner,
+        .cta-inner,
+        .footer-inner {
+          width: min(100% - 32px, 1180px);
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .hero {
+          min-height: auto;
+          padding: 104px 0 44px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.88)),
+            var(--surface-2);
+        }
+
+        h1 {
+          font-size: 58px;
+        }
+
+        .lede {
+          font-size: 18px;
+        }
+
+        .hero-points,
+        .feature-grid,
+        .workflow-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .score-row {
+          grid-template-columns: 1fr;
+        }
+
+        .finding,
+        .metric {
+          grid-template-columns: 28px 1fr;
+        }
+
+        .finding .tag,
+        .metric em {
+          grid-column: 2;
+        }
+
+        .section {
+          padding: 64px 0;
+        }
+
+        .footer-inner {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <nav class="nav" aria-label="Primary">
+        <div class="nav-inner">
+          <a class="brand" href="#top" aria-label="PerfLens home">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 12.6 8.5 8l3.8 3.8L19 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M4 19h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            </span>
+            PerfLens
+          </a>
+          <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#compare">Vs Lighthouse</a>
+            <a href="#snapshots">Snapshots</a>
+            <a href="#evidence">Evidence</a>
+          </div>
+          <a class="nav-cta" href="https://github.com/oluwatosinolamilekan/PerfLens">
+            GitHub
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        </div>
+      </nav>
+
+      <section id="top" class="hero">
+        <div class="hero-inner hero-grid">
+          <div>
+            <p class="eyebrow">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v5m0 8v5M3 12h5m8 0h5M6.3 6.3l3.5 3.5m4.4 4.4 3.5 3.5m0-11.4-3.5 3.5m-4.4 4.4-3.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              Browser-first performance auditor
+            </p>
+            <h1>PerfLens sees what slows real product launches.</h1>
+            <p class="lede">
+              Audit Core Web Vitals, resources, accessibility signals, framework context, history, and launch evidence without leaving the browser flow.
+            </p>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/oluwatosinolamilekan/PerfLens">
+                View source
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </a>
+              <a class="button" href="#compare">
+                Why not just Lighthouse?
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 5v14M19 12l-7 7-7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </a>
+            </div>
+            <div class="hero-points" aria-label="PerfLens highlights">
+              <div class="hero-point">
+                <strong>0-100</strong>
+                <span>Lighthouse-style Web Vitals score with live page context.</span>
+              </div>
+              <div class="hero-point">
+                <strong>Local</strong>
+                <span>Metrics stay in browser storage during normal extension use.</span>
+              </div>
+              <div class="hero-point">
+                <strong>Evidence</strong>
+                <span>Screenshots, videos, JSON reports, and launch readiness status.</span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="product-shot" aria-label="PerfLens audit preview">
+            <div class="shot-top">
+              <div class="window-controls" aria-hidden="true">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+              <span class="shot-label">perflens://audit/current-page</span>
+            </div>
+            <div class="shot-body">
+              <div class="score-row">
+                <div class="dial" aria-label="Performance score 94">
+                  <strong>94</strong>
+                </div>
+                <div class="metric-list">
+                  <div class="metric">
+                    <span>LCP</span>
+                    <div class="bar"><span style="width: 88%"></span></div>
+                    <em>1.8s</em>
+                  </div>
+                  <div class="metric">
+                    <span>INP</span>
+                    <div class="bar"><span style="width: 92%"></span></div>
+                    <em>118ms</em>
+                  </div>
+                  <div class="metric">
+                    <span>CLS</span>
+                    <div class="bar"><span style="width: 96%"></span></div>
+                    <em>0.03</em>
+                  </div>
+                  <div class="metric">
+                    <span>TTFB</span>
+                    <div class="bar warn"><span style="width: 64%"></span></div>
+                    <em>620ms</em>
+                  </div>
+                </div>
+              </div>
+              <div class="findings">
+                <div class="finding">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 12h5l2-7 4 14 2-7h3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <div>
+                    <strong>Root cause story</strong>
+                    <span>Largest delay is image delivery plus one render-blocking stylesheet.</span>
+                  </div>
+                  <span class="tag">high impact</span>
+                </div>
+                <div class="finding">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 5h14v14H5zM8 9h8M8 13h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <div>
+                    <strong>Framework signal</strong>
+                    <span>React production build detected with client-side hydration.</span>
+                  </div>
+                  <span class="tag">ready</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-inner">
+          <div class="section-head">
+            <h2>Everything a launch review needs in one browser-native lens.</h2>
+            <p>
+              PerfLens combines live measurement with product-focused diagnosis, so teams can move from vague performance anxiety to a short list of fixes.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 14a8 8 0 1 1 16 0M12 14l4-5M7 20h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <strong>Live Core Web Vitals</strong>
+              <p>Track LCP, FID, CLS, INP, FCP, and TTFB directly from the page you are testing.</p>
+            </article>
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16M7 7v12m10-12v12M4 19h16M9 11h6M9 15h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <strong>Resource breakdown</strong>
+              <p>See oversized images, large bundles, blocking CSS, weak caching, compression gaps, and heavy third-party code.</p>
+            </article>
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3 4 7v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V7zM9 12l2 2 4-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <strong>Launch readiness</strong>
+              <p>Blend desktop and mobile audit results into a readiness status that is easier to share before release.</p>
+            </article>
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 18V6m0 12h16M8 15l3-4 3 2 5-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <strong>History per URL</strong>
+              <p>Store local score history, trend indicators, and JSON exports so regressions are easier to spot.</p>
+            </article>
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 5h14v14H5zM8 9h8M8 13h8M8 17h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <strong>Root cause story</strong>
+              <p>Summarize the likely bottlenecks behind a score instead of forcing every teammate through raw metrics.</p>
+            </article>
+            <article class="feature">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" />
+              </svg>
+              <strong>Fix-first suggestions</strong>
+              <p>Rank recommendations by impact, effort, and confidence so the next engineering step is obvious.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="section alt">
+        <div class="section-inner">
+          <div class="section-head">
+            <h2>Designed for the messy middle between a score and a shipped fix.</h2>
+            <p>
+              PerfLens is useful during development, client QA, portfolio polish, and final production checks.
+            </p>
+          </div>
+          <div class="workflow-grid">
+            <article class="step">
+              <span>01</span>
+              <strong>Browse the product</strong>
+              <p>Run audits in the same browser context where you are testing actual pages and interactions.</p>
+            </article>
+            <article class="step">
+              <span>02</span>
+              <strong>Read the signals</strong>
+              <p>Review Web Vitals, resource weight, framework detection, build mode, and accessibility checks.</p>
+            </article>
+            <article class="step">
+              <span>03</span>
+              <strong>Collect evidence</strong>
+              <p>Generate desktop and mobile audit artifacts with screenshots, video, JSON, and status summaries.</p>
+            </article>
+            <article class="step">
+              <span>04</span>
+              <strong>Fix what matters</strong>
+              <p>Use ranked issues and root cause notes to pick the fastest path to a better user experience.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="compare" class="section">
+        <div class="section-inner">
+          <div class="section-head">
+            <h2>Better than Lighthouse when the job is product work.</h2>
+            <p>
+              Lighthouse is excellent for standardized lab audits. PerfLens adds the workflow layer teams need when they are debugging live pages and preparing to launch.
+            </p>
+          </div>
+          <div class="comparison">
+            <article class="compare-panel lighthouse">
+              <h3>Lighthouse gives you a strong audit baseline</h3>
+              <ul>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Great one-time lab scoring for performance, accessibility, SEO, and best practices.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Useful diagnostics, but reports often need interpretation before the team knows what to do.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Less focused on ongoing history, browser-extension context, launch evidence packs, and fix prioritization.</span>
+                </li>
+              </ul>
+            </article>
+            <article class="compare-panel">
+              <h3>PerfLens helps you act faster</h3>
+              <ul>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Lives in the browser and monitors pages as you browse, making performance feedback part of daily development.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Tracks per-URL history, framework/build signals, resource-specific issues, and local exports.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Produces prioritized suggestions, root cause stories, screenshots, videos, JSON reports, and launch readiness status.</span>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="snapshots" class="section alt">
+        <div class="section-inner">
+          <div class="section-head">
+            <h2>Real extension snapshots, not imaginary dashboard art.</h2>
+            <p>
+              The landing page now shows actual PerfLens output: DevTools reports, Web Vitals, prioritized audit issues, Fix It with AI prompts, and the Chrome extension popup.
+            </p>
+          </div>
+          <div class="snapshot-layout">
+            <div class="snapshot-stack">
+              <figure class="snapshot-card">
+                <img
+                  src="./assets/perflens-devtools-overview-scores-ZqgUn5v9.png"
+                  alt="PerfLens DevTools overview showing audit category scores and launch status"
+                  loading="lazy"
+                />
+                <figcaption>DevTools overview with Lighthouse-style category scores and launch context.</figcaption>
+              </figure>
+              <figure class="snapshot-card">
+                <img
+                  src="./assets/perflens-devtools-overview-vitals-DhwZACwe.png"
+                  alt="PerfLens DevTools overview showing Core Web Vitals and network summary"
+                  loading="lazy"
+                />
+                <figcaption>Core Web Vitals, network summary, and the next highest-priority fix.</figcaption>
+              </figure>
+              <figure class="snapshot-card">
+                <img
+                  src="./assets/perflens-devtools-audits-fixit-CUJ-5BrS.png"
+                  alt="PerfLens DevTools audits panel showing prioritized suggestions and Fix It with AI controls"
+                  loading="lazy"
+                />
+                <figcaption>Audits panel with prioritized suggestions and copy-ready AI fix prompts.</figcaption>
+              </figure>
+            </div>
+            <figure class="snapshot-card popup">
+              <img
+                src="./assets/perflens-extension-popup-CYZHI_BD.png"
+                alt="PerfLens Chrome extension popup showing performance score and audit navigation"
+                loading="lazy"
+              />
+              <figcaption>Chrome extension popup for quick score checks, re-audits, platform mode, and report navigation.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence" class="evidence-band">
+        <div class="evidence-inner">
+          <div>
+            <h2>Evidence that survives the meeting.</h2>
+            <p>
+              PerfLens turns a browser check into artifacts your team can review later: screenshots, recordings, category scores, resources, prioritized issues, and JSON reports for offline analysis or CI workflows.
+            </p>
+          </div>
+          <div class="artifact-list" aria-label="Evidence artifacts">
+            <div class="artifact">
+              <strong>Desktop audit screenshot</strong>
+              <span>PNG</span>
+            </div>
+            <div class="artifact">
+              <strong>Mobile audit screenshot</strong>
+              <span>PNG</span>
+            </div>
+            <div class="artifact">
+              <strong>Launch review recording</strong>
+              <span>WEBM</span>
+            </div>
+            <div class="artifact">
+              <strong>Offline performance report</strong>
+              <span>JSON</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="cta-inner">
+          <div>
+            <h2>Ship faster pages with clearer evidence.</h2>
+            <p>
+              PerfLens keeps performance close to the product, close to the browser, and close to the next fix.
+            </p>
+          </div>
+          <a class="button primary" href="https://github.com/oluwatosinolamilekan/PerfLens">
+            Open project
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <div class="footer-inner">
+        <span>PerfLens - Web Performance Auditor</span>
+        <span>Open source under the MIT License.</span>
+      </div>
+    </footer>
+  </body>
+</html>
