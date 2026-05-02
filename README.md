@@ -75,11 +75,6 @@ The marketing landing page is available in [index.html](./index.html). It includ
 - Launch evidence section
 - GitHub call to action
 
-If your local preview server is running, open:
-
-```txt
-http://127.0.0.1:4173/
-```
 
 ## AI Agent Prompt
 
