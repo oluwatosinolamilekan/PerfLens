@@ -173,9 +173,9 @@ function categoryCards(auditData: AuditData) {
 }
 
 const StatCard: React.FC<{ label: string; value: string; detail: string }> = ({ label, value, detail }) => (
-  <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
+  <div className="min-w-0 rounded-lg border border-perf-border bg-perf-surface p-3">
     <p className="text-[10px] font-semibold uppercase tracking-wider text-perf-muted">{label}</p>
-    <p className="mt-2 text-2xl font-bold text-perf-text tabular-nums">{value}</p>
+    <p className="devtools-stat-value mt-2 break-words font-bold text-perf-text tabular-nums">{value}</p>
     <p className="mt-1 text-xs leading-relaxed text-perf-muted">{detail}</p>
   </div>
 );
@@ -227,8 +227,8 @@ const RuntimeSummary: React.FC<{ auditData: AuditData; onOpenOpportunities: () =
       </div>
 
       <div className={`mt-3 rounded-md border px-3 py-2 ${buildStatusClass(buildStatus)}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-semibold">{buildStatusLabel}</p>
             <p className="mt-1 text-xs leading-relaxed">{buildStatusMessage}</p>
           </div>
@@ -247,8 +247,8 @@ const RuntimeSummary: React.FC<{ auditData: AuditData; onOpenOpportunities: () =
 };
 
 const NetworkTable: React.FC<{ entries: HarEntry[]; metric: 'time' | 'size' }> = ({ entries, metric }) => (
-  <div className="overflow-hidden rounded-lg border border-perf-border">
-    <div className="grid grid-cols-[1fr_120px_90px_90px] gap-2 border-b border-perf-border bg-perf-highlight px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-perf-muted">
+  <div className="min-w-0 overflow-hidden rounded-lg border border-perf-border">
+    <div className="hidden grid-cols-[minmax(0,1fr)_120px_70px_90px] gap-2 border-b border-perf-border bg-perf-highlight px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-perf-muted min-[560px]:grid">
       <span>Request</span>
       <span>Type</span>
       <span>Status</span>
@@ -260,16 +260,17 @@ const NetworkTable: React.FC<{ entries: HarEntry[]; metric: 'time' | 'size' }> =
       entries.map((entry, index) => (
         <div
           key={`${entry.request?.url}-${index}`}
-          className="grid grid-cols-[1fr_120px_90px_90px] gap-2 border-b border-perf-border/60 px-3 py-2 text-xs last:border-b-0"
+          className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-perf-border/60 px-3 py-2 text-xs last:border-b-0 min-[560px]:grid-cols-[minmax(0,1fr)_120px_70px_90px] min-[560px]:gap-2"
         >
-          <span className="truncate font-mono text-perf-text" title={entry.request?.url}>
+          <span className="col-span-2 min-w-0 truncate font-mono text-perf-text min-[560px]:col-span-1" title={entry.request?.url}>
             {entry.request?.url ?? 'Unknown request'}
           </span>
-          <span className="truncate text-perf-muted">{entryKind(entry)}</span>
-          <span className="text-perf-muted">{entry.response?.status ?? '--'}</span>
+          <span className="min-w-0 truncate text-perf-muted">{entryKind(entry)}</span>
+          <span className="hidden text-perf-muted min-[560px]:block">{entry.response?.status ?? '--'}</span>
           <span className="text-right font-semibold text-perf-text tabular-nums">
             {metric === 'time' ? `${Math.round(entry.time ?? 0)}ms` : formatBytes(entrySize(entry))}
           </span>
+          <span className="text-[10px] text-perf-muted min-[560px]:hidden">Status {entry.response?.status ?? '--'}</span>
         </div>
       ))
     )}
@@ -394,9 +395,9 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-perf-bg text-perf-text">
+    <div className="devtools-panel-shell min-w-0 overflow-x-hidden bg-perf-bg text-perf-text">
       <header className="sticky top-0 z-10 border-b border-perf-border bg-perf-bg/95 backdrop-blur">
-        <div className="flex items-center justify-between gap-4 px-5 py-3">
+        <div className="flex flex-col gap-3 px-4 py-3 min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-between min-[640px]:gap-4 min-[520px]:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-perf-accent to-perf-good">
               <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -410,7 +411,7 @@ const App: React.FC = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 min-[360px]:flex min-[360px]:items-center min-[640px]:shrink-0">
             <button
               onClick={refreshHar}
               className="rounded-md border border-perf-border bg-perf-surface px-3 py-1.5 text-xs font-semibold text-perf-text hover:border-perf-accent/40"
@@ -426,12 +427,12 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
-        <nav className="flex gap-1 px-5 pb-3">
+        <nav className="flex gap-1 overflow-x-auto px-4 pb-3 min-[520px]:px-5">
           {tabs.map((item) => (
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`tab-button ${tab === item.id ? 'tab-button-active' : ''}`}
+              className={`tab-button shrink-0 ${tab === item.id ? 'tab-button-active' : ''}`}
             >
               {item.label}
             </button>
@@ -439,9 +440,9 @@ const App: React.FC = () => {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-5 py-5">
+      <main className="mx-auto w-full max-w-7xl px-4 py-4 min-[520px]:px-5 min-[520px]:py-5">
         {loading ? (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="devtools-loading-grid">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="h-28 rounded-lg skeleton" />
             ))}
@@ -466,36 +467,38 @@ const App: React.FC = () => {
             {tab === 'overview' && (
               <div className="space-y-5">
                 <RuntimeSummary auditData={auditData} onOpenOpportunities={() => setTab('opportunities')} />
-                <section className="grid grid-cols-[220px_1fr] gap-4">
+                <section className="devtools-overview-score-grid">
                   <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
                     <ScoreGauge score={auditData.score} size={170} />
                     <p className="mt-2 text-center text-sm font-semibold text-perf-text">{scoreLabel(auditData.score)}</p>
                   </div>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="devtools-category-grid">
                     {categories.map((category) => (
                       <button
                         key={category.id}
                         onClick={() => setTab('opportunities')}
-                        className={`rounded-lg border p-3 text-left hover:border-perf-accent/40 ${scoreTone(category.score ?? 0)}`}
+                        className={`grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] items-start gap-3 rounded-lg border p-3 text-left hover:border-perf-accent/40 ${scoreTone(category.score ?? 0)}`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-perf-text">{category.label}</p>
-                          <p className="text-2xl font-bold tabular-nums">{category.score ?? '--'}</p>
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-current/20 bg-perf-bg/35">
+                          <p className="text-xl font-bold leading-none tabular-nums">{category.score ?? '--'}</p>
                         </div>
-                        <p className="mt-2 text-xs leading-relaxed text-perf-muted">{category.detail}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold leading-snug text-perf-text">{category.label}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-perf-muted">{category.detail}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </section>
 
-                <section className="grid grid-cols-4 gap-3">
+                <section className="devtools-stats-grid">
                   <StatCard label="Requests" value={String(networkSummary.totalRequests)} detail="Captured from the same data DevTools Network uses." />
                   <StatCard label="Transfer" value={formatBytes(networkSummary.transferBytes)} detail="Bytes transferred over the network for this page." />
                   <StatCard label="Third-party" value={String(networkSummary.thirdPartyCount)} detail="Requests leaving the first-party hostname." />
                   <StatCard label="Uncached" value={String(networkSummary.uncachedCount)} detail="Assets with weak or missing cache hints." />
                 </section>
 
-                <section className="grid grid-cols-[1fr_380px] gap-4">
+                <section className="devtools-secondary-grid">
                   <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-perf-muted">Core Web Vitals</p>
                     <div className="mt-3">
@@ -517,14 +520,14 @@ const App: React.FC = () => {
 
             {tab === 'network' && (
               <div className="space-y-5">
-                <section className="grid grid-cols-5 gap-3">
+                <section className="devtools-network-stats-grid">
                   <StatCard label="Requests" value={String(networkSummary.totalRequests)} detail="Total known HAR entries." />
                   <StatCard label="Total size" value={formatBytes(networkSummary.totalBytes)} detail="Largest known body/content size." />
                   <StatCard label="Transfer" value={formatBytes(networkSummary.transferBytes)} detail="Known network body size." />
                   <StatCard label="Third-party" value={String(networkSummary.thirdPartyCount)} detail="External host requests." />
                   <StatCard label="Blocking candidates" value={String(networkSummary.renderBlockingCount)} detail="Scripts and styles worth reviewing." />
                 </section>
-                <section className="grid grid-cols-2 gap-4">
+                <section className="devtools-network-tables-grid">
                   <div>
                     <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-perf-muted">Slowest Requests</p>
                     <NetworkTable entries={networkSummary.slowest} metric="time" />
@@ -538,7 +541,7 @@ const App: React.FC = () => {
             )}
 
             {tab === 'opportunities' && (
-              <div className="grid grid-cols-[1fr_420px] gap-4">
+              <div className="devtools-opportunities-grid">
                 <div className="space-y-3">
                   {!showFixActions && (
                     <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
