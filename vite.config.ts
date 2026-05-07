@@ -3,31 +3,10 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 
-type ExtensionVariant = 'manual' | 'auto';
-
-const extensionVariant: ExtensionVariant = process.env.PERFLENS_VARIANT === 'auto' ? 'auto' : 'manual';
-const isAutoVariant = extensionVariant === 'auto';
-const outDir = resolve(__dirname, 'dist', extensionVariant);
+const outDir = resolve(__dirname, 'dist');
 
 function buildManifest() {
-  const manifest = JSON.parse(
-    readFileSync(resolve(__dirname, 'public/manifest.json'), 'utf8')
-  );
-
-  if (isAutoVariant) {
-    manifest.name = 'PerfLens Auto - Web Performance Monitor';
-    manifest.description =
-      'Automatic web performance monitoring, scoring, and optimization suggestions for websites you visit';
-  } else {
-    manifest.name = 'PerfLens Manual - Web Performance Auditor';
-    manifest.description =
-      'Current-tab web performance audits, scoring, and optimization suggestions that run only when you click audit';
-    manifest.permissions = ['storage', 'activeTab', 'scripting'];
-    delete manifest.host_permissions;
-    delete manifest.content_scripts;
-  }
-
-  return `${JSON.stringify(manifest, null, 2)}\n`;
+  return readFileSync(resolve(__dirname, 'public/manifest.json'), 'utf8');
 }
 
 function copyStaticAssets() {
@@ -67,9 +46,6 @@ function copyStaticAssets() {
 
 export default defineConfig({
   plugins: [react(), copyStaticAssets()],
-  define: {
-    __PERFLENS_VARIANT__: JSON.stringify(extensionVariant),
-  },
   root: resolve(__dirname, 'public'),
   base: './',
   build: {
