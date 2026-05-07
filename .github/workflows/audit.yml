@@ -28,14 +28,28 @@ jobs:
 
       - run: npm ci
       - run: PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install --with-deps chromium
+      - run: npm run build
+
+      - name: Start preview server
+        run: |
+          npm exec vite -- preview --host 127.0.0.1 --port 4173 &
+          for i in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:4173 > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Preview server did not become ready in time."
+          exit 1
 
       - name: Run unified audit
         env:
-          AUDIT_URL: ${{ inputs.url || vars.AUDIT_URL }}
+          AUDIT_URL: ${{ inputs.url || vars.AUDIT_URL || 'http://127.0.0.1:4173' }}
           AUDIT_MIN_SCORE: ${{ inputs.min_score || vars.AUDIT_MIN_SCORE || '75' }}
         run: npm run audit:ci
 
       - name: Upload report artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: audit-results
