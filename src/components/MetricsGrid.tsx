@@ -80,7 +80,7 @@ function getRating(
 
 export const MetricsGrid: React.FC<MetricsGridProps> = ({ vitals }) => {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-1 gap-2 min-[320px]:grid-cols-2 min-[560px]:grid-cols-3">
       {METRICS.map((metric) => {
         const value = vitals[metric.key];
         const hasValue = value !== null && value !== undefined;
@@ -91,7 +91,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({ vitals }) => {
         return (
           <div
             key={metric.key}
-            className="metric-card flex flex-col items-center text-center gap-1.5"
+            className="metric-card min-w-0 flex flex-col items-center gap-1.5 text-center"
             title={metric.fullName}
           >
             <span className="text-[10px] font-semibold text-perf-muted tracking-wider uppercase">
