@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getSettings, saveSettings, clearHistory, exportHistory, getAllHistory } from '../utils/storage';
-import type { HistoryExportScope } from '../utils/storage';
-import type { Settings, Message, AIAgent, AuditReport } from '../utils/types';
+import { PerfLensLogo } from '../components/PerfLensLogo';
+import { getSettings, saveSettings, clearHistory, exportHistory } from '../utils/storage';
+import type { Settings, Message, AIAgent } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 type ExportMode = HistoryExportScope['type'];
@@ -178,11 +178,7 @@ export const App: React.FC = () => {
       <div className="max-w-xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-perf-accent to-perf-good flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <PerfLensLogo className="h-10 w-10 rounded-xl" />
           <div>
             <h1 className="text-xl font-bold">PerfLens Settings</h1>
             <p className="text-xs text-perf-muted">Configure performance monitoring preferences</p>

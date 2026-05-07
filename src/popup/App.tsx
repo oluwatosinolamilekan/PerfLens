@@ -5,6 +5,7 @@ import { AuditResults } from '../components/AuditResults';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
+import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { getSettings } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
@@ -364,11 +365,7 @@ export const App: React.FC = () => {
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-perf-accent to-perf-good flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
+              <PerfLensLogo className="h-6 w-6 rounded-md" />
               <span className="text-sm font-bold tracking-tight">PerfLens</span>
             </div>
             <div className="flex items-center gap-1.5">

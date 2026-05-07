@@ -5,6 +5,7 @@ import { MetricsGrid } from '../components/MetricsGrid';
 import { AuditResults } from '../components/AuditResults';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
+import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { exportHistory, getSettings } from '../utils/storage';
 import type { HistoryExportScope } from '../utils/storage';
@@ -683,11 +684,7 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-10 border-b border-perf-border bg-perf-bg/95 backdrop-blur">
         <div className="flex flex-col gap-3 px-4 py-3 min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-between min-[640px]:gap-4 min-[520px]:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-perf-accent to-perf-good">
-              <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
+            <PerfLensLogo className="h-9 w-9 rounded-lg" />
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight">PerfLens DevTools</h1>
               <p className="truncate font-mono text-xs text-perf-muted" title={displayUrl}>
