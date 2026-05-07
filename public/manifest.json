@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PerfLens",
   "description": "Current-tab performance audits, scoring, and optimization suggestions that run only when you click audit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
