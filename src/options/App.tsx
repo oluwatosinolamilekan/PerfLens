@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { PerfLensLogo } from '../components/PerfLensLogo';
-import { getSettings, saveSettings, clearHistory, exportHistory } from '../utils/storage';
-import type { Settings, Message, AIAgent } from '../utils/types';
+import {
+  getSettings,
+  saveSettings,
+  clearHistory,
+  exportHistory,
+  getAllHistory,
+} from '../utils/storage';
+import type { HistoryExportScope } from '../utils/storage';
+import type { Settings, Message, AIAgent, AuditReport } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 type ExportMode = HistoryExportScope['type'];
