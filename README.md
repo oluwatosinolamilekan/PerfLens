@@ -25,6 +25,22 @@ PerfLens is built around a simple idea:
 - **Launch evidence packs:** desktop and mobile audits with screenshots, videos, category scores, resource data, prioritized issues, readiness status, and JSON reports.
 - **Privacy-friendly defaults:** normal metric collection uses browser-native APIs and stores data locally with `chrome.storage.local`.
 
+## Extension Variants And Permissions
+
+PerfLens ships in two variants so teams can choose the right access model:
+
+- **PerfLens Manual - Web Performance Auditor:** runs only when you click audit on the active tab. This is the lower-permission option for users who do not want all-site access.
+- **PerfLens Auto - Web Performance Monitor:** requires all-site access so PerfLens can monitor pages automatically after navigation, update badges, and collect page-load audits without a manual click.
+
+If Chrome shows "read and change all your data on all websites," that warning applies to the Auto variant because automatic monitoring needs access to pages as they load. The Manual variant avoids that broad access by running on demand for the current tab.
+
+Build the variants with:
+
+```bash
+npm run build:manual
+npm run build:auto
+```
+
 ## Screenshots
 
 ![PerfLens landing page full screenshot](./assets/screenshots/perflens-landing-full.png)

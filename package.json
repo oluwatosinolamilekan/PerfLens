@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build",
+    "build": "npm run build:manual",
+    "build:manual": "tsc && PERFLENS_VARIANT=manual vite build",
+    "build:auto": "tsc && PERFLENS_VARIANT=auto vite build",
     "watch": "vite build --watch",
     "generate-icons": "node scripts/generate-icons.js",
     "audit": "PLAYWRIGHT_BROWSERS_PATH=0 node scripts/audit-cli.mjs",

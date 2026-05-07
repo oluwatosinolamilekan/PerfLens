@@ -1,22 +1,46 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+
+type ExtensionVariant = 'manual' | 'auto';
+
+const extensionVariant: ExtensionVariant = process.env.PERFLENS_VARIANT === 'auto' ? 'auto' : 'manual';
+const isAutoVariant = extensionVariant === 'auto';
+const outDir = resolve(__dirname, 'dist', extensionVariant);
+
+function buildManifest() {
+  const manifest = JSON.parse(
+    readFileSync(resolve(__dirname, 'public/manifest.json'), 'utf8')
+  );
+
+  if (isAutoVariant) {
+    manifest.name = 'PerfLens Auto - Web Performance Monitor';
+    manifest.description =
+      'Automatic web performance monitoring, scoring, and optimization suggestions for websites you visit';
+  } else {
+    manifest.name = 'PerfLens Manual - Web Performance Auditor';
+    manifest.description =
+      'Current-tab web performance audits, scoring, and optimization suggestions that run only when you click audit';
+    manifest.permissions = ['storage', 'activeTab', 'scripting'];
+    delete manifest.host_permissions;
+    delete manifest.content_scripts;
+  }
+
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
 
 function copyStaticAssets() {
   return {
     name: 'copy-static-assets',
     writeBundle() {
-      const distDir = resolve(__dirname, 'dist');
+      const distDir = outDir;
 
       if (!existsSync(distDir)) {
         mkdirSync(distDir, { recursive: true });
       }
 
-      copyFileSync(
-        resolve(__dirname, 'public/manifest.json'),
-        resolve(distDir, 'manifest.json')
-      );
+      writeFileSync(resolve(distDir, 'manifest.json'), buildManifest());
 
       copyFileSync(
         resolve(__dirname, 'src/content/content.css'),
@@ -43,10 +67,13 @@ function copyStaticAssets() {
 
 export default defineConfig({
   plugins: [react(), copyStaticAssets()],
+  define: {
+    __PERFLENS_VARIANT__: JSON.stringify(extensionVariant),
+  },
   root: resolve(__dirname, 'public'),
   base: './',
   build: {
-    outDir: resolve(__dirname, 'dist'),
+    outDir,
     emptyOutDir: true,
     rollupOptions: {
       input: {

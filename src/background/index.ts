@@ -1,5 +1,6 @@
 import { saveAudit, getAuditHistory, getSettings } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, Message, AuditResult, Suggestion, RootCauseStory } from '../utils/types';
+import { IS_AUTO_VARIANT } from '../utils/variant';
 
 const currentAudits: Map<number, AuditReport> = new Map();
 const auditErrors: Map<number, string> = new Map();
@@ -122,6 +123,7 @@ async function requestMetricsCollection(tabId: number): Promise<{ success: boole
 }
 
 chrome.webNavigation.onCompleted.addListener(async (details) => {
+  if (!IS_AUTO_VARIANT) return;
   if (details.frameId !== 0) return;
 
   const settings = await getSettings();
