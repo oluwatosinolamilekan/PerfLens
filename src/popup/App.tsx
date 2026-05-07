@@ -9,7 +9,6 @@ import { getFrameworkLogo } from '../assets/framework-logos';
 import { getSettings } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
-import { ACCESS_MODE_LABEL, IS_AUTO_VARIANT } from '../utils/variant';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
 const PROJECT_NAME = 'perflens';
@@ -371,9 +370,6 @@ export const App: React.FC = () => {
                 </svg>
               </div>
               <span className="text-sm font-bold tracking-tight">PerfLens</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-perf-accent/30 bg-perf-accent/10 text-perf-accent">
-                {ACCESS_MODE_LABEL}
-              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -547,7 +543,7 @@ export const App: React.FC = () => {
                 {platformAudit.evidencePack && (
                   <div className="rounded-md border border-perf-accent/25 bg-perf-accent/5 px-2.5 py-2">
                     <p className="text-[10px] font-semibold text-perf-accent uppercase tracking-wider">
-                      Tech Nation Evidence Pack
+                      Launch Evidence Pack
                     </p>
                     <p className="mt-1 text-[11px] text-perf-muted leading-relaxed">
                       {platformAudit.evidencePack.summary}
@@ -585,9 +581,7 @@ export const App: React.FC = () => {
               </div>
             ) : (
               <p className="text-xs text-perf-muted mt-1.5 max-w-[260px] mx-auto">
-                {IS_AUTO_VARIANT
-                  ? 'Navigate to a website and PerfLens will automatically audit its performance.'
-                  : 'Open a website and run an audit when you want PerfLens to analyze the current tab.'}
+                Open a website and run an audit when you want PerfLens to analyze the current tab.
               </p>
             )}
             <button

@@ -1,6 +1,5 @@
-import { saveAudit, getAuditHistory, getSettings } from '../utils/storage';
+import { saveAudit, getAuditHistory } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, Message, AuditResult, Suggestion, RootCauseStory } from '../utils/types';
-import { IS_AUTO_VARIANT } from '../utils/variant';
 
 const currentAudits: Map<number, AuditReport> = new Map();
 const auditErrors: Map<number, string> = new Map();
@@ -83,10 +82,14 @@ async function handleMetricsCollected(
   }
 }
 
-async function requestMetricsCollection(tabId: number): Promise<{ success: boolean; error?: string }> {
+async function requestMetricsCollection(
+  tabId: number,
+  fallbackUrl?: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     const tab = await chrome.tabs.get(tabId);
-    const blockedReason = getAuditBlockedReason(tab.url);
+    const targetUrl = tab.url || tab.pendingUrl || fallbackUrl;
+    const blockedReason = getAuditBlockedReason(targetUrl);
     if (blockedReason) {
       auditErrors.set(tabId, blockedReason);
       return { success: false, error: blockedReason };
@@ -121,21 +124,6 @@ async function requestMetricsCollection(tabId: number): Promise<{ success: boole
     return { success: false, error };
   }
 }
-
-chrome.webNavigation.onCompleted.addListener(async (details) => {
-  if (!IS_AUTO_VARIANT) return;
-  if (details.frameId !== 0) return;
-
-  const settings = await getSettings();
-
-  if (!settings.autoAudit && settings.auditFrequency !== 'pageload') return;
-
-  clearBadge(details.tabId);
-
-  setTimeout(() => {
-    requestMetricsCollection(details.tabId);
-  }, 1500);
-});
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading') {
@@ -188,12 +176,13 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
 
     case 'RE_AUDIT': {
-      const requestedTabId = (message.payload as { tabId?: number } | undefined)?.tabId;
+      const payload = message.payload as { tabId?: number; url?: string } | undefined;
+      const requestedTabId = payload?.tabId;
       if (requestedTabId !== undefined) {
         clearBadge(requestedTabId);
         currentAudits.delete(requestedTabId);
         auditErrors.delete(requestedTabId);
-        requestMetricsCollection(requestedTabId).then((result) => {
+        requestMetricsCollection(requestedTabId, payload?.url).then((result) => {
           sendResponse(result);
         });
         return true;
