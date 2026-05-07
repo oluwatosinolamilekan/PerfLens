@@ -1,5 +1,6 @@
 import type { AuditReport, Settings, DEFAULT_SETTINGS } from './types';
 import { DEFAULT_SETTINGS as defaults } from './types';
+import { IS_AUTO_VARIANT } from './variant';
 
 const HISTORY_KEY = 'perflens_history';
 const SETTINGS_KEY = 'perflens_settings';
@@ -71,7 +72,18 @@ export async function clearHistory(): Promise<void> {
 export async function getSettings(): Promise<Settings> {
   const storage = getStorage();
   const result = await storage.get(SETTINGS_KEY);
-  return { ...defaults, ...(result[SETTINGS_KEY] || {}) };
+  const settings = { ...defaults, ...(result[SETTINGS_KEY] || {}) };
+
+  if (!IS_AUTO_VARIANT) {
+    return {
+      ...settings,
+      autoAudit: false,
+      showBadge: false,
+      auditFrequency: 'manual',
+    };
+  }
+
+  return settings;
 }
 
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {

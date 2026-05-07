@@ -8,6 +8,7 @@ import {
 import { detectFramework, detectRuntime } from '../utils/framework-detector';
 import { runFullAudit } from '../utils/auditor';
 import type { PerformanceMetrics, Message, Settings, RootCauseStory } from '../utils/types';
+import { IS_AUTO_VARIANT } from '../utils/variant';
 
 let hasCollected = false;
 let floatingBadge: HTMLElement | null = null;
@@ -240,6 +241,9 @@ chrome.runtime.onMessage.addListener(
 
 function init(): void {
   observeCLS();
+
+  if (!IS_AUTO_VARIANT) return;
+
   initBadge();
 
   if (document.readyState === 'complete') {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getSettings, saveSettings, clearHistory, exportHistory } from '../utils/storage';
 import type { Settings, Message, AIAgent } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
+import { ACCESS_MODE_DESCRIPTION, ACCESS_MODE_LABEL, IS_AUTO_VARIANT } from '../utils/variant';
 
 function Toggle({
   checked,
@@ -126,8 +127,11 @@ export const App: React.FC = () => {
             <h1 className="text-xl font-bold">PerfLens Settings</h1>
             <p className="text-xs text-perf-muted">Configure performance monitoring preferences</p>
           </div>
+          <span className="ml-auto text-[10px] font-semibold text-perf-accent border border-perf-accent/30 bg-perf-accent/10 rounded-full px-2 py-1">
+            {ACCESS_MODE_LABEL}
+          </span>
           {saved && (
-            <span className="ml-auto text-xs font-medium text-perf-good animate-fade-in flex items-center gap-1">
+            <span className="text-xs font-medium text-perf-good animate-fade-in flex items-center gap-1">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
@@ -142,20 +146,28 @@ export const App: React.FC = () => {
             Monitoring
           </h2>
           <div className="bg-perf-surface border border-perf-border rounded-xl p-5 space-y-5">
-            <Toggle
-              checked={settings.autoAudit}
-              onChange={(v) => updateSetting('autoAudit', v)}
-              label="Auto-audit on page load"
-              description="Automatically collect performance metrics when a page finishes loading"
-            />
-            <div className="border-t border-perf-border" />
-            <Toggle
-              checked={settings.showBadge}
-              onChange={(v) => updateSetting('showBadge', v)}
-              label="Show floating score badge"
-              description="Display a small performance score badge on web pages"
-            />
-            <div className="border-t border-perf-border" />
+            <div className="rounded-lg border border-perf-border bg-perf-bg/50 px-3 py-2.5">
+              <p className="text-xs font-semibold text-perf-text">Access mode: {ACCESS_MODE_LABEL}</p>
+              <p className="text-xs text-perf-muted mt-1">{ACCESS_MODE_DESCRIPTION}</p>
+            </div>
+            {IS_AUTO_VARIANT && (
+              <>
+                <Toggle
+                  checked={settings.autoAudit}
+                  onChange={(v) => updateSetting('autoAudit', v)}
+                  label="Auto-audit on page load"
+                  description="Automatically collect performance metrics when a page finishes loading"
+                />
+                <div className="border-t border-perf-border" />
+                <Toggle
+                  checked={settings.showBadge}
+                  onChange={(v) => updateSetting('showBadge', v)}
+                  label="Show floating score badge"
+                  description="Display a small performance score badge on web pages"
+                />
+                <div className="border-t border-perf-border" />
+              </>
+            )}
             <Toggle
               checked={settings.collectResources}
               onChange={(v) => updateSetting('collectResources', v)}
@@ -166,6 +178,7 @@ export const App: React.FC = () => {
         </section>
 
         {/* Audit Frequency */}
+        {IS_AUTO_VARIANT && (
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-perf-muted uppercase tracking-wider mb-4">
             Audit Frequency
@@ -217,6 +230,7 @@ export const App: React.FC = () => {
             )}
           </div>
         </section>
+        )}
 
         {/* Score Thresholds */}
         <section className="mb-8">
