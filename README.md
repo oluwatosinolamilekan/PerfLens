@@ -25,6 +25,16 @@ PerfLens is built around a simple idea:
 - **Launch evidence packs:** desktop and mobile audits with screenshots, videos, category scores, resource data, prioritized issues, readiness status, and JSON reports.
 - **Privacy-friendly defaults:** normal metric collection uses browser-native APIs and stores data locally with `chrome.storage.local`.
 
+## Extension Permissions
+
+PerfLens uses current-tab access by default. It runs only when you click an audit action in the popup or DevTools panel, so it does not require broad all-site access or automatic page monitoring.
+
+Build the extension with:
+
+```bash
+npm run build
+```
+
 ## Screenshots
 
 ![PerfLens landing page full screenshot](./assets/screenshots/perflens-landing-full.png)

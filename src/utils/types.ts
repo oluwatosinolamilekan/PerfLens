@@ -140,7 +140,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  autoAudit: true,
+  autoAudit: false,
   showBadge: false,
   collectResources: true,
   aiFixAgent: 'cursor',

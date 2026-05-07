@@ -67,4 +67,98 @@
   .skeleton {
     @apply bg-perf-border/50 rounded animate-pulse-soft;
   }
+
+  .devtools-panel-shell {
+    container-type: inline-size;
+  }
+
+  .devtools-loading-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .devtools-stat-value {
+    font-size: clamp(1.25rem, 6cqi, 1.5rem);
+    line-height: 1.2;
+  }
+
+  .devtools-overview-score-grid,
+  .devtools-category-grid,
+  .devtools-stats-grid,
+  .devtools-network-stats-grid,
+  .devtools-secondary-grid,
+  .devtools-network-tables-grid,
+  .devtools-opportunities-grid {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  .devtools-category-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .devtools-stats-grid,
+  .devtools-network-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 0.75rem;
+  }
+
+  .devtools-secondary-grid,
+  .devtools-network-tables-grid,
+  .devtools-opportunities-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @container (min-width: 360px) {
+    .devtools-loading-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 640px) {
+    .devtools-category-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 760px) {
+    .devtools-overview-score-grid {
+      grid-template-columns: 220px minmax(0, 1fr);
+    }
+
+    .devtools-stats-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .devtools-secondary-grid {
+      grid-template-columns: minmax(0, 1fr) 380px;
+    }
+  }
+
+  @container (min-width: 960px) {
+    .devtools-loading-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .devtools-network-stats-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .devtools-network-tables-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .devtools-opportunities-grid {
+      grid-template-columns: minmax(0, 1fr) 420px;
+    }
+  }
+
+  @container (min-width: 1120px) {
+    .devtools-category-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
 }

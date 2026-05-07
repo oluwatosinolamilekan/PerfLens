@@ -1,22 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+
+const outDir = resolve(__dirname, 'dist');
+
+function buildManifest() {
+  return readFileSync(resolve(__dirname, 'public/manifest.json'), 'utf8');
+}
 
 function copyStaticAssets() {
   return {
     name: 'copy-static-assets',
     writeBundle() {
-      const distDir = resolve(__dirname, 'dist');
+      const distDir = outDir;
 
       if (!existsSync(distDir)) {
         mkdirSync(distDir, { recursive: true });
       }
 
-      copyFileSync(
-        resolve(__dirname, 'public/manifest.json'),
-        resolve(distDir, 'manifest.json')
-      );
+      writeFileSync(resolve(distDir, 'manifest.json'), buildManifest());
 
       copyFileSync(
         resolve(__dirname, 'src/content/content.css'),
@@ -46,7 +49,7 @@ export default defineConfig({
   root: resolve(__dirname, 'public'),
   base: './',
   build: {
-    outDir: resolve(__dirname, 'dist'),
+    outDir,
     emptyOutDir: true,
     rollupOptions: {
       input: {

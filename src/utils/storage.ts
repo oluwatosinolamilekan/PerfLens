@@ -6,8 +6,44 @@ const SETTINGS_KEY = 'perflens_settings';
 const MAX_HISTORY_PER_URL = 50;
 const MAX_TOTAL_HISTORY = 500;
 
+export type HistoryExportScope =
+  | { type: 'all' }
+  | { type: 'url'; value: string }
+  | { type: 'site'; value: string };
+
 function getStorage(): typeof chrome.storage.local {
   return chrome.storage.local;
+}
+
+function normalizeHostname(hostname: string): string {
+  return hostname.trim().toLowerCase().replace(/^www\./, '');
+}
+
+function getHistoryUrlHostname(url: string): string | null {
+  try {
+    return normalizeHostname(new URL(url).hostname);
+  } catch {
+    return null;
+  }
+}
+
+function filterHistory(
+  history: Record<string, AuditReport[]>,
+  scope: HistoryExportScope
+): Record<string, AuditReport[]> {
+  if (scope.type === 'all') {
+    return history;
+  }
+
+  if (scope.type === 'url') {
+    return history[scope.value] ? { [scope.value]: history[scope.value] } : {};
+  }
+
+  const requestedSite = normalizeHostname(scope.value);
+
+  return Object.fromEntries(
+    Object.entries(history).filter(([url]) => getHistoryUrlHostname(url) === requestedSite)
+  );
 }
 
 export async function saveAudit(url: string, audit: AuditReport): Promise<void> {
@@ -71,7 +107,13 @@ export async function clearHistory(): Promise<void> {
 export async function getSettings(): Promise<Settings> {
   const storage = getStorage();
   const result = await storage.get(SETTINGS_KEY);
-  return { ...defaults, ...(result[SETTINGS_KEY] || {}) };
+  return {
+    ...defaults,
+    ...(result[SETTINGS_KEY] || {}),
+    autoAudit: false,
+    showBadge: false,
+    auditFrequency: 'manual',
+  };
 }
 
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {
@@ -81,7 +123,7 @@ export async function saveSettings(settings: Partial<Settings>): Promise<void> {
   await storage.set({ [SETTINGS_KEY]: updated });
 }
 
-export async function exportHistory(): Promise<string> {
+export async function exportHistory(scope: HistoryExportScope = { type: 'all' }): Promise<string> {
   const history = await getAllHistory();
-  return JSON.stringify(history, null, 2);
+  return JSON.stringify(filterHistory(history, scope), null, 2);
 }

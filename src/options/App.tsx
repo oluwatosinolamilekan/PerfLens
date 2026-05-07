@@ -4,6 +4,30 @@ import { getSettings, saveSettings, clearHistory, exportHistory } from '../utils
 import type { Settings, Message, AIAgent } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
+type ExportMode = HistoryExportScope['type'];
+
+function normalizeHostname(hostname: string): string {
+  return hostname.trim().toLowerCase().replace(/^www\./, '');
+}
+
+function getHostname(url: string): string | null {
+  try {
+    return normalizeHostname(new URL(url).hostname);
+  } catch {
+    return null;
+  }
+}
+
+function getFilenamePart(value: string): string {
+  return value
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 70);
+}
+
 function Toggle({
   checked,
   onChange,
@@ -48,13 +72,38 @@ export const App: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [historyUrls, setHistoryUrls] = useState<string[]>([]);
+  const [exportMode, setExportMode] = useState<ExportMode>('all');
+  const [selectedUrl, setSelectedUrl] = useState('');
+  const [selectedSite, setSelectedSite] = useState('');
 
   useEffect(() => {
-    getSettings().then((s) => {
+    async function loadOptions() {
+      const [s, history, tabs] = await Promise.all([
+        getSettings(),
+        getAllHistory(),
+        chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []),
+      ]);
+      const urls = Object.entries(history as Record<string, AuditReport[]>)
+        .sort(([, a], [, b]) => (b[0]?.timestamp ?? 0) - (a[0]?.timestamp ?? 0))
+        .map(([url]) => url);
+      const sites = Array.from(new Set(urls.map((url) => getHostname(url)).filter(Boolean))) as string[];
+      const activeSite = tabs[0]?.url ? getHostname(tabs[0].url) : null;
+      const initialSite = activeSite && sites.includes(activeSite) ? activeSite : sites[0] ?? '';
+
       setSettings(s);
+      setHistoryUrls(urls);
+      setSelectedUrl(urls[0] ?? '');
+      setSelectedSite(initialSite);
       setLoaded(true);
-    });
+    }
+
+    loadOptions();
   }, []);
+
+  const historySites = Array.from(
+    new Set(historyUrls.map((url) => getHostname(url)).filter(Boolean))
+  ) as string[];
 
   const updateSetting = async <K extends keyof Settings>(
     key: K,
@@ -82,6 +131,9 @@ export const App: React.FC = () => {
   const handleClearHistory = async () => {
     setClearing(true);
     await clearHistory();
+    setHistoryUrls([]);
+    setSelectedUrl('');
+    setSelectedSite('');
     setClearing(false);
     setShowClearConfirm(false);
     setSaved(true);
@@ -91,12 +143,20 @@ export const App: React.FC = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const json = await exportHistory();
+      const scope: HistoryExportScope =
+        exportMode === 'url'
+          ? { type: 'url', value: selectedUrl }
+          : exportMode === 'site'
+            ? { type: 'site', value: selectedSite }
+            : { type: 'all' };
+      const json = await exportHistory(scope);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `perflens-history-${new Date().toISOString().slice(0, 10)}.json`;
+      const scopeName =
+        scope.type === 'all' ? 'all' : getFilenamePart(scope.value) || scope.type;
+      a.download = `perflens-history-${scopeName}-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -140,78 +200,11 @@ export const App: React.FC = () => {
           </h2>
           <div className="bg-perf-surface border border-perf-border rounded-xl p-5 space-y-5">
             <Toggle
-              checked={settings.autoAudit}
-              onChange={(v) => updateSetting('autoAudit', v)}
-              label="Auto-audit on page load"
-              description="Automatically collect performance metrics when a page finishes loading"
-            />
-            <div className="border-t border-perf-border" />
-            <Toggle
-              checked={settings.showBadge}
-              onChange={(v) => updateSetting('showBadge', v)}
-              label="Show floating score badge"
-              description="Display a small performance score badge on web pages"
-            />
-            <div className="border-t border-perf-border" />
-            <Toggle
               checked={settings.collectResources}
               onChange={(v) => updateSetting('collectResources', v)}
               label="Collect resource metrics"
               description="Analyze individual resource sizes and timings (may slightly impact performance)"
             />
-          </div>
-        </section>
-
-        {/* Audit Frequency */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold text-perf-muted uppercase tracking-wider mb-4">
-            Audit Frequency
-          </h2>
-          <div className="bg-perf-surface border border-perf-border rounded-xl p-5">
-            <div className="space-y-2">
-              {[
-                { value: 'pageload' as const, label: 'Every page load', desc: 'Audit runs automatically on each navigation' },
-                { value: 'manual' as const, label: 'Manual only', desc: 'Only audit when you click the Re-audit button' },
-                { value: 'interval' as const, label: 'On interval', desc: 'Periodically re-audit the current page' },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    settings.auditFrequency === option.value
-                      ? 'bg-perf-accent/10 border border-perf-accent/25'
-                      : 'hover:bg-perf-highlight border border-transparent'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="frequency"
-                    checked={settings.auditFrequency === option.value}
-                    onChange={() => updateSetting('auditFrequency', option.value)}
-                    className="mt-1 accent-[#4dabf7]"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-perf-text">{option.label}</p>
-                    <p className="text-xs text-perf-muted mt-0.5">{option.desc}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            {settings.auditFrequency === 'interval' && (
-              <div className="mt-4 pl-8">
-                <label className="text-xs text-perf-muted">Interval (minutes)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={settings.auditInterval / 60000}
-                  onChange={(e) =>
-                    updateSetting('auditInterval', Math.max(1, parseInt(e.target.value) || 5) * 60000)
-                  }
-                  className="mt-1 w-24 bg-perf-bg border border-perf-border rounded-md px-3 py-1.5 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
-                />
-              </div>
-            )}
           </div>
         </section>
 
@@ -326,18 +319,84 @@ export const App: React.FC = () => {
             Data
           </h2>
           <div className="bg-perf-surface border border-perf-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-perf-text">Export History</p>
-                <p className="text-xs text-perf-muted mt-0.5">Download all audit history as JSON</p>
+                <p className="text-xs text-perf-muted mt-0.5">
+                  Download all history, one site, or one exact URL as JSON
+                </p>
               </div>
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="text-xs font-medium text-perf-accent px-3 py-1.5 rounded-md bg-perf-accent/10 hover:bg-perf-accent/15 transition-all disabled:opacity-40"
-              >
-                {exporting ? 'Exporting...' : 'Export'}
-              </button>
+
+              <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-end">
+                <div>
+                  <label className="text-xs text-perf-muted">Scope</label>
+                  <select
+                    value={exportMode}
+                    onChange={(e) => setExportMode(e.target.value as ExportMode)}
+                    className="mt-1 w-full bg-perf-bg border border-perf-border rounded-md px-3 py-2 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
+                  >
+                    <option value="all">All history</option>
+                    <option value="site" disabled={historySites.length === 0}>
+                      Site
+                    </option>
+                    <option value="url" disabled={historyUrls.length === 0}>
+                      Exact URL
+                    </option>
+                  </select>
+                </div>
+
+                {exportMode === 'site' && (
+                  <div>
+                    <label className="text-xs text-perf-muted">Site</label>
+                    <select
+                      value={selectedSite}
+                      onChange={(e) => setSelectedSite(e.target.value)}
+                      className="mt-1 w-full bg-perf-bg border border-perf-border rounded-md px-3 py-2 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
+                    >
+                      {historySites.map((site) => (
+                        <option key={site} value={site}>
+                          {site}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {exportMode === 'url' && (
+                  <div>
+                    <label className="text-xs text-perf-muted">URL</label>
+                    <select
+                      value={selectedUrl}
+                      onChange={(e) => setSelectedUrl(e.target.value)}
+                      className="mt-1 w-full bg-perf-bg border border-perf-border rounded-md px-3 py-2 text-sm text-perf-text focus:outline-none focus:border-perf-accent transition-colors"
+                    >
+                      {historyUrls.map((url) => (
+                        <option key={url} value={url}>
+                          {url}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {exportMode === 'all' && (
+                  <p className="text-xs text-perf-muted sm:self-center">
+                    {historyUrls.length} saved {historyUrls.length === 1 ? 'URL' : 'URLs'}
+                  </p>
+                )}
+
+                <button
+                  onClick={handleExport}
+                  disabled={
+                    exporting ||
+                    (exportMode === 'site' && !selectedSite) ||
+                    (exportMode === 'url' && !selectedUrl)
+                  }
+                  className="text-xs font-medium text-perf-accent px-3 py-2 rounded-md bg-perf-accent/10 hover:bg-perf-accent/15 transition-all disabled:opacity-40"
+                >
+                  {exporting ? 'Exporting...' : 'Export'}
+                </button>
+              </div>
             </div>
 
             <div className="border-t border-perf-border" />

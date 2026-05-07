@@ -240,15 +240,6 @@ chrome.runtime.onMessage.addListener(
 
 function init(): void {
   observeCLS();
-  initBadge();
-
-  if (document.readyState === 'complete') {
-    setTimeout(performCollection, 500);
-  } else {
-    window.addEventListener('load', () => {
-      setTimeout(performCollection, 1000);
-    });
-  }
 }
 
 init();
