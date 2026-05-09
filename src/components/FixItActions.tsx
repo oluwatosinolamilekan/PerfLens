@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { buildSingleIssuePrompt } from '../utils/ai-fix';
+import { buildPatchBrief, buildSingleIssuePrompt } from '../utils/ai-fix';
 import type { AIAgent, AIFixContext } from '../utils/types';
 
 interface FixItActionsProps extends AIFixContext {
@@ -88,6 +88,41 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
   const [customAgentName, setCustomAgentName] = useState(defaultCustomAgentName);
   const [status, setStatus] = useState<'idle' | 'copied' | 'opening' | 'paste-ready'>('idle');
   const [showPreview, setShowPreview] = useState(false);
+  const [showBrief, setShowBrief] = useState(!compact);
+
+  const patchBrief = useMemo(
+    () =>
+      buildPatchBrief({
+        issueTitle,
+        issueDescription,
+        suggestion,
+        resource,
+        category,
+        pageUrl,
+        projectName,
+        score,
+        framework,
+        runtime,
+        vitals,
+        resources,
+        rootCauseStory,
+      }),
+    [
+      issueTitle,
+      issueDescription,
+      suggestion,
+      resource,
+      category,
+      pageUrl,
+      projectName,
+      score,
+      framework,
+      runtime,
+      vitals,
+      resources,
+      rootCauseStory,
+    ]
+  );
 
   const prompt = useMemo(
     () =>
@@ -199,6 +234,86 @@ export const FixItActions: React.FC<FixItActionsProps> = ({
           <span className="text-[9px] px-1.5 py-0.5 rounded border border-perf-border text-perf-muted truncate max-w-[190px]" title={pageUrl}>
             Page: {pageUrl}
           </span>
+        )}
+      </div>
+
+      <div className="mt-2 rounded-md border border-perf-border bg-perf-bg/50">
+        <button
+          onClick={() => setShowBrief(!showBrief)}
+          className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left"
+        >
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-perf-text">
+              AI Patch Brief
+            </p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-perf-muted">
+              {patchBrief.problem}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
+              patchBrief.riskLevel === 'high'
+                ? 'border-perf-poor/30 bg-perf-poor/10 text-perf-poor'
+                : patchBrief.riskLevel === 'low'
+                  ? 'border-perf-good/30 bg-perf-good/10 text-perf-good'
+                  : 'border-perf-moderate/30 bg-perf-moderate/10 text-perf-moderate'
+            }`}
+          >
+            {patchBrief.riskLevel} risk
+          </span>
+        </button>
+
+        {showBrief && (
+          <div className="space-y-2 border-t border-perf-border px-2.5 py-2">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-perf-muted">
+                Likely cause
+              </p>
+              <p className="mt-0.5 text-[10px] leading-relaxed text-perf-text">
+                {patchBrief.likelyCause}
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-perf-muted">
+                  Evidence
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {patchBrief.evidence.slice(0, compact ? 2 : 3).map((item) => (
+                    <li key={item} className="text-[10px] leading-relaxed text-perf-muted">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-perf-muted">
+                  Inspect first
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {patchBrief.likelyFiles.slice(0, compact ? 2 : 4).map((item) => (
+                    <li key={item} className="truncate font-mono text-[10px] leading-relaxed text-perf-muted" title={item}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-perf-muted">
+                Recommended fix
+              </p>
+              <ul className="mt-1 space-y-1">
+                {patchBrief.recommendedFixes.slice(0, compact ? 2 : 3).map((item) => (
+                  <li key={item} className="text-[10px] leading-relaxed text-perf-muted">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
       </div>
 

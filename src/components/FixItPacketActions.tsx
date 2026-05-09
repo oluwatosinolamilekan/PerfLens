@@ -27,6 +27,10 @@ export const FixItPacketActions: React.FC<FixItPacketActionsProps> = ({
   rootCauseStory,
 }) => {
   const issueCount = audits.reduce((sum, audit) => sum + audit.issues.length, 0);
+  const severityRank = { high: 0, medium: 1, low: 2 };
+  const primaryIssue = audits
+    .flatMap((audit) => audit.issues.map((issue) => ({ audit, issue })))
+    .sort((a, b) => severityRank[a.issue.severity] - severityRank[b.issue.severity])[0];
   const context: AIFixContext = {
     pageUrl,
     projectName,
@@ -49,10 +53,11 @@ export const FixItPacketActions: React.FC<FixItPacketActionsProps> = ({
   return (
     <FixItActions
       actionLabel={`Fix top ${Math.min(issueCount, maxIssues)} with AI`}
-      category="Performance plan"
-      issueTitle="Prioritized PerfLens fix packet"
-      issueDescription="Multiple prioritized PerfLens issues are ready to send as one implementation plan."
-      suggestion="Start with the highest-severity, lowest-risk fixes and verify with a before/after PerfLens audit."
+      category={primaryIssue?.audit.category ?? 'Performance plan'}
+      issueTitle={primaryIssue?.audit.title ?? 'Prioritized PerfLens fix packet'}
+      issueDescription={primaryIssue?.issue.description ?? 'Multiple prioritized PerfLens issues are ready to send as one implementation plan.'}
+      suggestion={primaryIssue?.issue.suggestion ?? 'Start with the highest-severity, lowest-risk fixes and verify with a before/after PerfLens audit.'}
+      resource={primaryIssue?.issue.resource}
       defaultAgent={defaultAgent}
       defaultCustomAgentName={defaultCustomAgentName}
       promptOverride={prompt}
