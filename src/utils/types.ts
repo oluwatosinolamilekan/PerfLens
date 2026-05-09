@@ -114,6 +114,19 @@ export interface RootCauseStory {
   bullets: string[];
 }
 
+export interface AIPatchBrief {
+  title: string;
+  problem: string;
+  likelyCause: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  evidence: string[];
+  likelyFiles: string[];
+  recommendedFixes: string[];
+  patchRules: string[];
+  verificationSteps: string[];
+  frameworkNotes: string[];
+}
+
 export interface AuditReport {
   url: string;
   timestamp: number;
