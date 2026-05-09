@@ -298,6 +298,9 @@ export const App: React.FC = () => {
                 <option value="cursor">Cursor</option>
                 <option value="claude">Claude</option>
                 <option value="codex">Codex</option>
+                <option value="windsurf">Windsurf</option>
+                <option value="copilot">Copilot</option>
+                <option value="chatgpt">ChatGPT</option>
                 <option value="custom">Custom agent</option>
               </select>
               <p className="text-xs text-perf-muted mt-1">

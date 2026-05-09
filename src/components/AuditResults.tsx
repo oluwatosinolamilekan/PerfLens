@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import type { AuditResult, AIAgent } from '../utils/types';
+import type { AuditResult, AIAgent, AIFixContext } from '../utils/types';
 import { FixItActions } from './FixItActions';
 
-interface AuditResultsProps {
+interface AuditResultsProps extends AIFixContext {
   audits: AuditResult[];
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
-  pageUrl?: string;
-  projectName?: string;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -60,15 +58,13 @@ const AuditCategory: React.FC<{
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
-  pageUrl?: string;
-  projectName?: string;
+  fixContext?: AIFixContext;
 }> = ({
   audit,
   showFixActions = false,
   defaultAgent = 'cursor',
   defaultCustomAgentName = '',
-  pageUrl,
-  projectName,
+  fixContext,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const icon = CATEGORY_ICONS[audit.category] || '📋';
@@ -161,8 +157,7 @@ const AuditCategory: React.FC<{
                     issueDescription={issue.description}
                     suggestion={issue.suggestion}
                     resource={issue.resource}
-                    pageUrl={pageUrl}
-                    projectName={projectName}
+                    {...fixContext}
                   />
                 )}
               </div>
@@ -195,9 +190,25 @@ export const AuditResults: React.FC<AuditResultsProps> = ({
   defaultCustomAgentName = '',
   pageUrl,
   projectName,
+  score,
+  framework,
+  runtime,
+  vitals,
+  resources,
+  rootCauseStory,
 }) => {
   const totalIssues = audits.reduce((sum, a) => sum + a.issues.length, 0);
   const passedCount = audits.filter((a) => a.passed).length;
+  const fixContext: AIFixContext = {
+    pageUrl,
+    projectName,
+    score,
+    framework,
+    runtime,
+    vitals,
+    resources,
+    rootCauseStory,
+  };
 
   return (
     <div className="space-y-3">
@@ -218,8 +229,7 @@ export const AuditResults: React.FC<AuditResultsProps> = ({
             showFixActions={showFixActions}
             defaultAgent={defaultAgent}
             defaultCustomAgentName={defaultCustomAgentName}
-            pageUrl={pageUrl}
-            projectName={projectName}
+            fixContext={fixContext}
           />
         ))}
       </div>
