@@ -7,9 +7,11 @@ import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { PerfLensLogo } from '../components/PerfLensLogo';
+import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
 import { exportHistory, getSettings } from '../utils/storage';
+import { buildExportableAuditReport } from '../utils/regression-report';
 import type { HistoryExportScope } from '../utils/storage';
 import type { AuditReport, AuditResult, Message, PerformanceMetrics, RootCauseStory, Settings, Suggestion } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
@@ -486,6 +488,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reauditing, setReauditing] = useState(false);
   const [auditData, setAuditData] = useState<AuditData | null>(null);
+  const [currentAudit, setCurrentAudit] = useState<AuditReport | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -527,6 +530,7 @@ const App: React.FC = () => {
 
       if (response?.audit) {
         const audit = response.audit as AuditReport;
+        setCurrentAudit(audit);
         setAuditData({
           metrics: audit.metrics,
           audits: audit.audits ?? [],
@@ -544,6 +548,7 @@ const App: React.FC = () => {
         } as Message);
         setHistory(historyResponse?.history ?? []);
       } else if (response?.error) {
+        setCurrentAudit(null);
         setAuditError(response.error);
       }
     } catch (err) {
@@ -588,6 +593,7 @@ const App: React.FC = () => {
       pageUrlRef.current = url;
       setPageUrl(url);
       setAuditData(null);
+      setCurrentAudit(null);
       setHistory([]);
       setAuditError(null);
       setTimeout(() => {
@@ -673,6 +679,33 @@ const App: React.FC = () => {
       setExportStatus('Evidence brief copied as Markdown.');
     } catch (err) {
       setAuditError(err instanceof Error ? err.message : 'Evidence brief copy failed.');
+    }
+  };
+
+  const handleDownloadAuditReport = () => {
+    if (!currentAudit) return;
+    setExportStatus(null);
+    try {
+      const scopeName = filenamePart(currentAudit.url) || 'current-page';
+      downloadTextFile(
+        `perflens-audit-report-${scopeName}-${new Date().toISOString().slice(0, 10)}.md`,
+        buildExportableAuditReport(currentAudit, history),
+        'text/markdown'
+      );
+      setExportStatus('Audit report downloaded.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Audit report download failed.');
+    }
+  };
+
+  const handleCopyAuditReport = async () => {
+    if (!currentAudit) return;
+    setExportStatus(null);
+    try {
+      await copyText(buildExportableAuditReport(currentAudit, history));
+      setExportStatus('Audit report copied as Markdown.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Audit report copy failed.');
     }
   };
 
@@ -801,6 +834,8 @@ const App: React.FC = () => {
                     {topIssue && <p className="mt-2 text-xs leading-relaxed text-perf-accent">{topIssue.issue.suggestion}</p>}
                   </div>
                 </section>
+
+                <RegressionWatchPanel history={history} current={currentAudit} />
               </div>
             )}
 
@@ -884,8 +919,11 @@ const App: React.FC = () => {
             )}
 
             {tab === 'history' && (
-              <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
-                <HistoryChart history={history} />
+              <div className="space-y-4">
+                <RegressionWatchPanel history={history} current={currentAudit} />
+                <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
+                  <HistoryChart history={history} />
+                </div>
               </div>
             )}
 
@@ -945,12 +983,27 @@ const App: React.FC = () => {
                       >
                         Copy Brief
                       </button>
+                      <button
+                        onClick={handleDownloadAuditReport}
+                        disabled={!currentAudit || history.length === 0}
+                        className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-3 py-1.5 text-xs font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-50"
+                      >
+                        Audit Report
+                      </button>
+                      <button
+                        onClick={handleCopyAuditReport}
+                        disabled={!currentAudit || history.length === 0}
+                        className="rounded-md border border-perf-border bg-perf-highlight px-3 py-1.5 text-xs font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-50"
+                      >
+                        Copy Report
+                      </button>
                     </div>
                   </div>
                   {exportStatus && (
                     <p className="mt-3 text-xs font-medium text-perf-good">{exportStatus}</p>
                   )}
                 </div>
+                {currentAudit && <RegressionWatchPanel history={history} current={currentAudit} />}
               </div>
             )}
           </>

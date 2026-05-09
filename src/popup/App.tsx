@@ -7,13 +7,15 @@ import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { PerfLensLogo } from '../components/PerfLensLogo';
+import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
 import { getSettings } from '../utils/storage';
+import { buildExportableAuditReport } from '../utils/regression-report';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
-type Tab = 'overview' | 'audits' | 'resources' | 'history';
+type Tab = 'overview' | 'audits' | 'resources' | 'history' | 'report';
 const PLATFORM_AUDIT_API = 'http://localhost:8787/api/audit';
 type LighthouseCategoryId = 'performance' | 'accessibility' | 'best-practices' | 'seo';
 
@@ -94,6 +96,43 @@ function getScoreTone(score: number): string {
   if (score >= 90) return 'text-perf-good border-perf-good/30 bg-perf-good/10';
   if (score >= 50) return 'text-perf-moderate border-perf-moderate/30 bg-perf-moderate/10';
   return 'text-perf-poor border-perf-poor/30 bg-perf-poor/10';
+}
+
+function filenamePart(value: string): string {
+  return value
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 70);
+}
+
+function downloadTextFile(filename: string, text: string, mimeType: string): void {
+  const blob = new Blob([text], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = objectUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
 }
 
 function getLighthouseCategories(auditData: AuditData) {
@@ -181,8 +220,10 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reauditing, setReauditing] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
+  const [currentAudit, setCurrentAudit] = useState<AuditReport | null>(null);
   const [auditData, setAuditData] = useState<AuditData | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [platformAudit, setPlatformAudit] = useState<PlatformAuditReport | null>(null);
@@ -198,6 +239,7 @@ export const App: React.FC = () => {
 
       if (response?.audit) {
         const audit = response.audit as AuditReport;
+        setCurrentAudit(audit);
         const metricsPayload = audit.metrics as PerformanceMetrics & {
           audits?: AuditResult[];
           suggestions?: Suggestion[];
@@ -212,6 +254,7 @@ export const App: React.FC = () => {
         });
         setAuditError(null);
       } else if (response?.error) {
+        setCurrentAudit(null);
         setAuditError(response.error);
       }
 
@@ -308,6 +351,33 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDownloadReport = () => {
+    if (!currentAudit) return;
+    setReportStatus(null);
+    try {
+      const scopeName = filenamePart(currentAudit.url) || 'current-page';
+      downloadTextFile(
+        `perflens-audit-report-${scopeName}-${new Date().toISOString().slice(0, 10)}.md`,
+        buildExportableAuditReport(currentAudit, history),
+        'text/markdown'
+      );
+      setReportStatus('Markdown report downloaded.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Report download failed.');
+    }
+  };
+
+  const handleCopyReport = async () => {
+    if (!currentAudit) return;
+    setReportStatus(null);
+    try {
+      await copyText(buildExportableAuditReport(currentAudit, history));
+      setReportStatus('Markdown report copied.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Report copy failed.');
+    }
+  };
+
   const displayUrl = (() => {
     try {
       const u = new URL(currentUrl);
@@ -325,6 +395,7 @@ export const App: React.FC = () => {
     { id: 'audits', label: 'Audits' },
     { id: 'resources', label: 'Network' },
     { id: 'history', label: 'History' },
+    { id: 'report', label: 'Report' },
   ];
 
   const framework = auditData?.metrics.framework;
@@ -599,6 +670,7 @@ export const App: React.FC = () => {
                   <ScoreGauge score={auditData.score} size={140} />
                 </div>
                 <LighthouseCategories auditData={auditData} onOpenAudits={() => setTab('audits')} />
+                <RegressionWatchPanel history={history} current={currentAudit} compact />
                 <MetricsGrid vitals={auditData.metrics.vitals} />
                 {auditData.rootCauseStory && (
                   <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
@@ -686,7 +758,43 @@ export const App: React.FC = () => {
               />
             )}
 
-            {tab === 'history' && <HistoryChart history={history} />}
+            {tab === 'history' && (
+              <div className="space-y-3">
+                <RegressionWatchPanel history={history} current={currentAudit} />
+                <HistoryChart history={history} />
+              </div>
+            )}
+
+            {tab === 'report' && (
+              <div className="space-y-3">
+                {currentAudit && <RegressionWatchPanel history={history} current={currentAudit} />}
+                <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
+                  <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
+                    Exportable Audit Report
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-perf-muted">
+                    Create a Markdown report with regression watch, before/after comparison, vitals, resources, and top issues.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleDownloadReport}
+                      disabled={!currentAudit}
+                      className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-3 py-2 text-xs font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-50"
+                    >
+                      Download MD
+                    </button>
+                    <button
+                      onClick={handleCopyReport}
+                      disabled={!currentAudit}
+                      className="rounded-md border border-perf-border bg-perf-highlight px-3 py-2 text-xs font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-50"
+                    >
+                      Copy Report
+                    </button>
+                  </div>
+                  {reportStatus && <p className="mt-2 text-xs font-medium text-perf-good">{reportStatus}</p>}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
