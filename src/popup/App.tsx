@@ -2,17 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { MetricsGrid } from '../components/MetricsGrid';
 import { AuditResults } from '../components/AuditResults';
+import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
+import { inferProjectName } from '../utils/ai-fix';
 import { getSettings } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
 type Tab = 'overview' | 'audits' | 'resources' | 'history';
-const PROJECT_NAME = 'perflens';
 const PLATFORM_AUDIT_API = 'http://localhost:8787/api/audit';
 type LighthouseCategoryId = 'performance' | 'accessibility' | 'best-practices' | 'seo';
 
@@ -357,6 +358,7 @@ export const App: React.FC = () => {
     buildStatus === 'prod'
       ? 'Running against a production-like build.'
       : 'For accurate performance results, run and audit the production build.';
+  const projectName = inferProjectName(currentUrl);
 
   return (
     <div className="w-[400px] min-h-[500px] max-h-[600px] overflow-y-auto bg-perf-bg text-perf-text">
@@ -627,13 +629,35 @@ export const App: React.FC = () => {
 
             {tab === 'audits' && (
               <div className="space-y-4">
+                {runtimeMode === 'local' && (
+                  <FixItPacketActions
+                    audits={auditData.audits}
+                    suggestions={auditData.suggestions}
+                    defaultAgent={settings.aiFixAgent}
+                    defaultCustomAgentName={settings.customAIAgent}
+                    pageUrl={currentUrl}
+                    projectName={projectName}
+                    score={auditData.score}
+                    framework={auditData.metrics.framework}
+                    runtime={auditData.metrics.runtime}
+                    vitals={auditData.metrics.vitals}
+                    resources={auditData.metrics.resources}
+                    rootCauseStory={auditData.rootCauseStory}
+                  />
+                )}
                 <AuditResults
                   audits={auditData.audits}
                   showFixActions={runtimeMode === 'local'}
                   defaultAgent={settings.aiFixAgent}
                   defaultCustomAgentName={settings.customAIAgent}
                   pageUrl={currentUrl}
-                  projectName={PROJECT_NAME}
+                  projectName={projectName}
+                  score={auditData.score}
+                  framework={auditData.metrics.framework}
+                  runtime={auditData.metrics.runtime}
+                  vitals={auditData.metrics.vitals}
+                  resources={auditData.metrics.resources}
+                  rootCauseStory={auditData.rootCauseStory}
                 />
                 {auditData.suggestions.length > 0 && (
                   <div>
@@ -653,7 +677,12 @@ export const App: React.FC = () => {
                 defaultAgent={settings.aiFixAgent}
                 defaultCustomAgentName={settings.customAIAgent}
                 pageUrl={currentUrl}
-                projectName={PROJECT_NAME}
+                projectName={projectName}
+                score={auditData.score}
+                framework={auditData.metrics.framework}
+                runtime={auditData.metrics.runtime}
+                vitals={auditData.metrics.vitals}
+                rootCauseStory={auditData.rootCauseStory}
               />
             )}
 

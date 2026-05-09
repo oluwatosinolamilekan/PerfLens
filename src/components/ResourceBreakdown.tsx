@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import type { ResourceMetrics, AIAgent } from '../utils/types';
+import type { ResourceMetrics, AIAgent, AIFixContext } from '../utils/types';
 import { FixItActions } from './FixItActions';
 
-interface ResourceBreakdownProps {
+interface ResourceBreakdownProps extends AIFixContext {
   resources: ResourceMetrics;
   showFixActions?: boolean;
   defaultAgent?: AIAgent;
   defaultCustomAgentName?: string;
-  pageUrl?: string;
-  projectName?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -60,6 +58,11 @@ export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({
   defaultCustomAgentName = '',
   pageUrl,
   projectName,
+  score,
+  framework,
+  runtime,
+  vitals,
+  rootCauseStory,
 }) => {
   const [showAll, setShowAll] = useState(false);
 
@@ -214,6 +217,12 @@ export const ResourceBreakdown: React.FC<ResourceBreakdownProps> = ({
                     resource={r.name}
                     pageUrl={pageUrl}
                     projectName={projectName}
+                    score={score}
+                    framework={framework}
+                    runtime={runtime}
+                    vitals={vitals}
+                    resources={resources}
+                    rootCauseStory={rootCauseStory}
                   />
                 </div>
               )}

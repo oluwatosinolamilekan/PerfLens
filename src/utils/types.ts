@@ -168,9 +168,15 @@ export interface Message {
   payload?: unknown;
 }
 
-export type AIAgent = 'cursor' | 'claude' | 'codex' | 'custom';
+export type AIAgent = 'cursor' | 'claude' | 'codex' | 'windsurf' | 'copilot' | 'chatgpt' | 'custom';
 
 export interface AIFixContext {
   pageUrl?: string;
   projectName?: string;
+  score?: number;
+  framework?: FrameworkInfo;
+  runtime?: RuntimeInfo;
+  vitals?: WebVitals;
+  resources?: ResourceMetrics;
+  rootCauseStory?: RootCauseStory;
 }

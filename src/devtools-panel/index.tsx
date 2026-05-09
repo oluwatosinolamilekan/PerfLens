@@ -3,13 +3,15 @@ import { createRoot } from 'react-dom/client';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { MetricsGrid } from '../components/MetricsGrid';
 import { AuditResults } from '../components/AuditResults';
+import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
+import { inferProjectName } from '../utils/ai-fix';
 import { exportHistory, getSettings } from '../utils/storage';
 import type { HistoryExportScope } from '../utils/storage';
-import type { AuditReport, AuditResult, Message, PerformanceMetrics, Settings, Suggestion } from '../utils/types';
+import type { AuditReport, AuditResult, Message, PerformanceMetrics, RootCauseStory, Settings, Suggestion } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 import '../styles/globals.css';
 
@@ -20,6 +22,7 @@ interface AuditData {
   metrics: PerformanceMetrics;
   audits: AuditResult[];
   suggestions: Suggestion[];
+  rootCauseStory?: RootCauseStory;
   score: number;
 }
 
@@ -528,6 +531,7 @@ const App: React.FC = () => {
           metrics: audit.metrics,
           audits: audit.audits ?? [],
           suggestions: audit.suggestions ?? [],
+          rootCauseStory: audit.rootCauseStory,
           score: audit.score,
         });
         setAuditError(null);
@@ -611,6 +615,7 @@ const App: React.FC = () => {
   const displaySite = hostname(displayUrl);
   const runtimeMode = auditData?.metrics.runtime?.mode ?? 'unknown';
   const showFixActions = runtimeMode === 'local';
+  const projectName = inferProjectName(displayUrl);
 
   const handleHistoryExport = async (scope: HistoryExportScope) => {
     setExportingHistory(scope.type);
@@ -840,13 +845,35 @@ const App: React.FC = () => {
                       </p>
                     </div>
                   )}
+                  {showFixActions && (
+                    <FixItPacketActions
+                      audits={auditData.audits}
+                      suggestions={auditData.suggestions}
+                      defaultAgent={settings.aiFixAgent}
+                      defaultCustomAgentName={settings.customAIAgent}
+                      pageUrl={auditData.metrics.url}
+                      projectName={projectName}
+                      score={auditData.score}
+                      framework={auditData.metrics.framework}
+                      runtime={auditData.metrics.runtime}
+                      vitals={auditData.metrics.vitals}
+                      resources={auditData.metrics.resources}
+                      rootCauseStory={auditData.rootCauseStory}
+                    />
+                  )}
                   <AuditResults
                     audits={auditData.audits}
                     showFixActions={showFixActions}
                     defaultAgent={settings.aiFixAgent}
                     defaultCustomAgentName={settings.customAIAgent}
                     pageUrl={auditData.metrics.url}
-                    projectName="perflens"
+                    projectName={projectName}
+                    score={auditData.score}
+                    framework={auditData.metrics.framework}
+                    runtime={auditData.metrics.runtime}
+                    vitals={auditData.metrics.vitals}
+                    resources={auditData.metrics.resources}
+                    rootCauseStory={auditData.rootCauseStory}
                   />
                 </div>
                 <div>
