@@ -401,7 +401,7 @@ const RuntimeSummary: React.FC<{ auditData: AuditData; onOpenOpportunities: () =
     buildStatus === 'prod'
       ? 'Running against a production-like build.'
       : runtimeMode === 'local'
-        ? 'Local app detected. PerfLens can generate fix prompts for issues in the Opportunities tab.'
+        ? 'Local app detected. PerfLens can generate fix prompts for issues in the Audits tab.'
         : 'For accurate performance results, run and audit the production build.';
 
   return (
@@ -440,7 +440,7 @@ const RuntimeSummary: React.FC<{ auditData: AuditData; onOpenOpportunities: () =
               onClick={onOpenOpportunities}
               className="shrink-0 rounded-md border border-perf-accent/30 bg-perf-accent/10 px-3 py-1.5 text-xs font-semibold text-perf-accent hover:bg-perf-accent/15"
             >
-              Fix issues
+              View checks
             </button>
           )}
         </div>
@@ -678,8 +678,8 @@ const App: React.FC = () => {
 
   const tabs: { id: DevtoolsTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
+    { id: 'opportunities', label: 'Audits' },
     { id: 'network', label: 'Network' },
-    { id: 'opportunities', label: 'Opportunities' },
     { id: 'history', label: 'History' },
     { id: 'export', label: 'Export' },
   ];
@@ -691,7 +691,12 @@ const App: React.FC = () => {
           <div className="flex min-w-0 items-center gap-3">
             <PerfLensLogo className="h-9 w-9 rounded-lg" />
             <div className="min-w-0">
-              <h1 className="text-base font-bold tracking-tight">PerfLens DevTools</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold tracking-tight">PerfLens</h1>
+                <span className="rounded-full border border-perf-border bg-perf-highlight px-2 py-0.5 text-[10px] font-medium text-perf-muted">
+                  DevTools
+                </span>
+              </div>
               <p className="truncate font-mono text-xs text-perf-muted" title={displayUrl}>
                 {displayUrl || 'Inspecting current tab'}
               </p>
@@ -709,7 +714,7 @@ const App: React.FC = () => {
               disabled={reauditing || loading}
               className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-3 py-1.5 text-xs font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-50"
             >
-              {reauditing ? 'Auditing...' : 'Run Audit'}
+              {reauditing ? 'Auditing...' : 'Re-audit'}
             </button>
           </div>
         </div>
@@ -745,7 +750,7 @@ const App: React.FC = () => {
               disabled={reauditing}
               className="mt-5 rounded-md bg-perf-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {reauditing ? 'Auditing...' : 'Run Audit'}
+              {reauditing ? 'Auditing...' : 'Run Audit Now'}
             </button>
           </div>
         ) : (
@@ -877,7 +882,7 @@ const App: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-perf-muted">Prioritized Suggestions</p>
+                  <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-perf-muted">All Suggestions</p>
                   <SuggestionsPanel suggestions={auditData.suggestions} />
                 </div>
               </div>
