@@ -974,7 +974,7 @@ export const App: React.FC = () => {
       {/* Footer */}
       <div className="border-t border-perf-border px-4 py-2 mt-2">
         <p className="text-[9px] text-perf-muted/50 text-center">
-          PerfLens v1.0.0 — Performance data collected from browser APIs
+          PerfLens v1.0.2 — Performance data collected from browser APIs
         </p>
       </div>
     </div>

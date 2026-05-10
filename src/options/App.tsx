@@ -449,7 +449,7 @@ export const App: React.FC = () => {
         {/* Footer */}
         <div className="text-center py-4 border-t border-perf-border">
           <p className="text-xs text-perf-muted/50">
-            PerfLens v1.0.0 — Built with performance in mind
+            PerfLens v1.0.2 — Built with performance in mind
           </p>
         </div>
       </div>
