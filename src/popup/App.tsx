@@ -10,12 +10,12 @@ import { PerfLensLogo } from '../components/PerfLensLogo';
 import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
-import { getSettings } from '../utils/storage';
-import { buildExportableAuditReport } from '../utils/regression-report';
+import { exportHistory, getSettings } from '../utils/storage';
+import type { HistoryExportScope } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
 
-type Tab = 'overview' | 'audits' | 'resources' | 'history' | 'report';
+type Tab = 'overview' | 'audits' | 'resources' | 'history' | 'export';
 const PLATFORM_AUDIT_API = 'http://localhost:8787/api/audit';
 type LighthouseCategoryId = 'performance' | 'accessibility' | 'best-practices' | 'seo';
 
@@ -167,6 +167,145 @@ function getLighthouseCategories(auditData: AuditData) {
   ];
 }
 
+function filenamePart(value: string): string {
+  return value
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 70);
+}
+
+function formatExportBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function latestAudit(history: AuditReport[]): AuditReport | null {
+  return [...history].sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
+}
+
+function averageScore(history: AuditReport[]): number | null {
+  if (history.length === 0) return null;
+  return Math.round(history.reduce((sum, audit) => sum + audit.score, 0) / history.length);
+}
+
+function scoreDelta(history: AuditReport[]): number | null {
+  if (history.length < 2) return null;
+  const ordered = [...history].sort((a, b) => a.timestamp - b.timestamp);
+  return ordered[ordered.length - 1].score - ordered[0].score;
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
+function downloadTextFile(filename: string, text: string, mimeType: string): void {
+  const blob = new Blob([text], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = objectUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function downloadHistoryExport(scope: HistoryExportScope): Promise<void> {
+  const json = await exportHistory(scope);
+  const scopeName = scope.type === 'all' ? 'all' : filenamePart(scope.value) || scope.type;
+  downloadTextFile(
+    `perflens-history-${scopeName}-${new Date().toISOString().slice(0, 10)}.json`,
+    json,
+    'application/json'
+  );
+}
+
+function buildEvidenceBrief(pageUrl: string, history: AuditReport[]): string {
+  const latest = latestAudit(history);
+  const avg = averageScore(history);
+  const delta = scoreDelta(history);
+  const recurringCategories = new Map<string, number>();
+
+  for (const audit of history) {
+    for (const result of audit.audits) {
+      if (result.issues.length > 0) {
+        recurringCategories.set(result.category, (recurringCategories.get(result.category) ?? 0) + result.issues.length);
+      }
+    }
+  }
+
+  const topCategories = [...recurringCategories.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([category, count]) => `- ${category}: ${count} recorded issue${count === 1 ? '' : 's'}`);
+
+  const topIssues = latest?.audits
+    .flatMap((audit) => audit.issues.map((issue) => `- **${audit.category}**: ${issue.description}\n  - Suggested fix: ${issue.suggestion}`))
+    .slice(0, 6) ?? [];
+
+  return [
+    '# PerfLens Evidence Brief',
+    '',
+    `**Page:** ${pageUrl || latest?.url || 'Not available'}`,
+    `**Generated:** ${new Date().toLocaleString()}`,
+    `**Audit runs:** ${history.length}`,
+    latest ? `**Latest audit:** ${new Date(latest.timestamp).toLocaleString()}` : '**Latest audit:** Not available',
+    '',
+    '## Score Trend',
+    '',
+    latest ? `- Latest score: **${latest.score}/100**` : '- Latest score: Not available',
+    avg !== null ? `- Average score: **${avg}/100**` : '- Average score: Not available',
+    delta !== null ? `- Movement from first recorded audit: **${delta >= 0 ? '+' : ''}${delta} points**` : '- Movement from first recorded audit: Not enough history',
+    '',
+    '## Runtime Context',
+    '',
+    latest ? `- Runtime mode: ${latest.metrics.runtime.mode}` : '- Runtime mode: Not available',
+    latest ? `- Build status: ${latest.metrics.runtime.buildStatus}` : '- Build status: Not available',
+    latest ? `- Framework: ${latest.metrics.framework.primary?.name ?? latest.metrics.framework.name}` : '- Framework: Not available',
+    '',
+    '## Current Core Web Vitals',
+    '',
+    latest
+      ? [
+          `- LCP: ${latest.metrics.vitals.lcp?.toFixed(0) ?? 'n/a'} ms`,
+          `- CLS: ${latest.metrics.vitals.cls?.toFixed(3) ?? 'n/a'}`,
+          `- INP: ${latest.metrics.vitals.inp?.toFixed(0) ?? 'n/a'} ms`,
+          `- FCP: ${latest.metrics.vitals.fcp?.toFixed(0) ?? 'n/a'} ms`,
+          `- TTFB: ${latest.metrics.vitals.ttfb?.toFixed(0) ?? 'n/a'} ms`,
+        ].join('\n')
+      : '- No vitals recorded.',
+    '',
+    '## Resource Snapshot',
+    '',
+    latest ? `- Requests observed: ${latest.metrics.resources.total}` : '- Requests observed: Not available',
+    latest ? `- Total resource size: ${formatExportBytes(latest.metrics.resources.totalSize)}` : '- Total resource size: Not available',
+    '',
+    '## Recurring Issue Areas',
+    '',
+    topCategories.length ? topCategories.join('\n') : '- No recurring issue areas recorded.',
+    '',
+    '## Current Top Issues',
+    '',
+    topIssues.length ? topIssues.join('\n') : '- No active issues recorded.',
+  ].join('\n');
+}
+
 const LighthouseCategories: React.FC<{ auditData: AuditData; onOpenAudits: () => void }> = ({
   auditData,
   onOpenAudits,
@@ -230,6 +369,8 @@ export const App: React.FC = () => {
   const [platformReportPath, setPlatformReportPath] = useState<string | null>(null);
   const [platformAuditing, setPlatformAuditing] = useState(false);
   const [platformError, setPlatformError] = useState<string | null>(null);
+  const [exportingHistory, setExportingHistory] = useState<HistoryExportScope['type'] | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
 
   const fetchAuditData = useCallback(async () => {
     try {
@@ -390,12 +531,68 @@ export const App: React.FC = () => {
     }
   })();
 
+  const displaySite = (() => {
+    try {
+      return new URL(currentUrl).hostname.replace('www.', '');
+    } catch {
+      return 'unknown';
+    }
+  })();
+
+  const handleHistoryExport = async (scope: HistoryExportScope) => {
+    setExportingHistory(scope.type);
+    setExportStatus(null);
+    try {
+      await downloadHistoryExport(scope);
+      setExportStatus('History JSON downloaded.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'History export failed.');
+    } finally {
+      setExportingHistory(null);
+    }
+  };
+
+  const handleCopyJson = async () => {
+    setExportStatus(null);
+    try {
+      await copyText(await exportHistory({ type: 'url', value: currentUrl }));
+      setExportStatus('Current URL history copied as JSON.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Copy failed.');
+    }
+  };
+
+  const handleDownloadBrief = () => {
+    setExportStatus(null);
+    try {
+      const scopeName = filenamePart(currentUrl) || 'current-page';
+      downloadTextFile(
+        `perflens-evidence-brief-${scopeName}-${new Date().toISOString().slice(0, 10)}.md`,
+        buildEvidenceBrief(currentUrl, history),
+        'text/markdown'
+      );
+      setExportStatus('Evidence brief downloaded.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Evidence brief download failed.');
+    }
+  };
+
+  const handleCopyBrief = async () => {
+    setExportStatus(null);
+    try {
+      await copyText(buildEvidenceBrief(currentUrl, history));
+      setExportStatus('Evidence brief copied as Markdown.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Evidence brief copy failed.');
+    }
+  };
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'audits', label: 'Audits' },
     { id: 'resources', label: 'Network' },
     { id: 'history', label: 'History' },
-    { id: 'report', label: 'Report' },
+    { id: 'export', label: 'Export' },
   ];
 
   const framework = auditData?.metrics.framework;
@@ -758,40 +955,85 @@ export const App: React.FC = () => {
               />
             )}
 
-            {tab === 'history' && (
-              <div className="space-y-3">
-                <RegressionWatchPanel history={history} current={currentAudit} />
-                <HistoryChart history={history} />
-              </div>
-            )}
+            {tab === 'history' && <HistoryChart history={history} />}
 
-            {tab === 'report' && (
+            {tab === 'export' && (
               <div className="space-y-3">
-                {currentAudit && <RegressionWatchPanel history={history} current={currentAudit} />}
                 <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
                   <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
-                    Exportable Audit Report
+                    Export History
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-perf-muted">
-                    Create a Markdown report with regression watch, before/after comparison, vitals, resources, and top issues.
+                  <p className="mt-1 truncate font-mono text-[10px] text-perf-muted" title={currentUrl}>
+                    {displayUrl || 'No audited URL yet'}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-perf-muted">
+                    Save audit history as JSON or create a compact Markdown evidence brief for the current page.
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
-                      onClick={handleDownloadReport}
-                      disabled={!currentAudit}
-                      className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-3 py-2 text-xs font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-50"
+                      onClick={() => handleHistoryExport({ type: 'url', value: currentUrl })}
+                      disabled={!currentUrl || history.length === 0 || exportingHistory !== null}
+                      className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-2.5 py-2 text-[10px] font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-40"
                     >
-                      Download MD
+                      {exportingHistory === 'url' ? 'Exporting...' : 'Export URL'}
                     </button>
                     <button
-                      onClick={handleCopyReport}
-                      disabled={!currentAudit}
-                      className="rounded-md border border-perf-border bg-perf-highlight px-3 py-2 text-xs font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-50"
+                      onClick={() => handleHistoryExport({ type: 'site', value: displaySite })}
+                      disabled={!currentUrl || displaySite === 'unknown' || history.length === 0 || exportingHistory !== null}
+                      className="rounded-md border border-perf-border bg-perf-highlight px-2.5 py-2 text-[10px] font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-40"
                     >
-                      Copy Report
+                      {exportingHistory === 'site' ? 'Exporting...' : 'Export Site'}
+                    </button>
+                    <button
+                      onClick={handleCopyJson}
+                      disabled={!currentUrl || history.length === 0}
+                      className="rounded-md border border-perf-border bg-perf-highlight px-2.5 py-2 text-[10px] font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-40"
+                    >
+                      Copy JSON
+                    </button>
+                    <button
+                      onClick={() => handleHistoryExport({ type: 'all' })}
+                      disabled={exportingHistory !== null}
+                      className="rounded-md border border-perf-border bg-perf-highlight px-2.5 py-2 text-[10px] font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-40"
+                    >
+                      {exportingHistory === 'all' ? 'Exporting...' : 'Export All'}
                     </button>
                   </div>
-                  {reportStatus && <p className="mt-2 text-xs font-medium text-perf-good">{reportStatus}</p>}
+                </div>
+
+                <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
+                  <p className="text-[10px] font-semibold text-perf-muted uppercase tracking-wider">
+                    Evidence Brief
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-perf-muted">
+                    Markdown summary with score trend, runtime context, vitals, resources, and top issues.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleDownloadBrief}
+                      disabled={history.length === 0}
+                      className="rounded-md border border-perf-accent/30 bg-perf-accent/10 px-2.5 py-2 text-[10px] font-semibold text-perf-accent hover:bg-perf-accent/15 disabled:opacity-40"
+                    >
+                      Download Brief
+                    </button>
+                    <button
+                      onClick={handleCopyBrief}
+                      disabled={history.length === 0}
+                      className="rounded-md border border-perf-border bg-perf-highlight px-2.5 py-2 text-[10px] font-semibold text-perf-text hover:border-perf-accent/40 disabled:opacity-40"
+                    >
+                      Copy Brief
+                    </button>
+                  </div>
+                  {exportStatus && (
+                    <p className="mt-2 rounded-md border border-perf-good/25 bg-perf-good/10 px-2 py-1.5 text-[10px] font-medium text-perf-good">
+                      {exportStatus}
+                    </p>
+                  )}
+                  {history.length === 0 && (
+                    <p className="mt-2 text-[10px] leading-relaxed text-perf-muted">
+                      Run an audit first so PerfLens has current-page history to export.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -802,7 +1044,7 @@ export const App: React.FC = () => {
       {/* Footer */}
       <div className="border-t border-perf-border px-4 py-2 mt-2">
         <p className="text-[9px] text-perf-muted/50 text-center">
-          PerfLens v1.0.0 — Performance data collected from browser APIs
+          PerfLens v1.0.2 — Performance data collected from browser APIs
         </p>
       </div>
     </div>
