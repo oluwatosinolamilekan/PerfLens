@@ -7,6 +7,7 @@ import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { PerfLensLogo } from '../components/PerfLensLogo';
+import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
 import { exportHistory, getSettings } from '../utils/storage';
@@ -95,6 +96,43 @@ function getScoreTone(score: number): string {
   if (score >= 90) return 'text-perf-good border-perf-good/30 bg-perf-good/10';
   if (score >= 50) return 'text-perf-moderate border-perf-moderate/30 bg-perf-moderate/10';
   return 'text-perf-poor border-perf-poor/30 bg-perf-poor/10';
+}
+
+function filenamePart(value: string): string {
+  return value
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 70);
+}
+
+function downloadTextFile(filename: string, text: string, mimeType: string): void {
+  const blob = new Blob([text], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = objectUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
 }
 
 function getLighthouseCategories(auditData: AuditData) {
@@ -321,8 +359,10 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reauditing, setReauditing] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
+  const [currentAudit, setCurrentAudit] = useState<AuditReport | null>(null);
   const [auditData, setAuditData] = useState<AuditData | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [platformAudit, setPlatformAudit] = useState<PlatformAuditReport | null>(null);
@@ -340,6 +380,7 @@ export const App: React.FC = () => {
 
       if (response?.audit) {
         const audit = response.audit as AuditReport;
+        setCurrentAudit(audit);
         const metricsPayload = audit.metrics as PerformanceMetrics & {
           audits?: AuditResult[];
           suggestions?: Suggestion[];
@@ -354,6 +395,7 @@ export const App: React.FC = () => {
         });
         setAuditError(null);
       } else if (response?.error) {
+        setCurrentAudit(null);
         setAuditError(response.error);
       }
 
@@ -447,6 +489,33 @@ export const App: React.FC = () => {
       );
     } finally {
       setPlatformAuditing(false);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!currentAudit) return;
+    setReportStatus(null);
+    try {
+      const scopeName = filenamePart(currentAudit.url) || 'current-page';
+      downloadTextFile(
+        `perflens-audit-report-${scopeName}-${new Date().toISOString().slice(0, 10)}.md`,
+        buildExportableAuditReport(currentAudit, history),
+        'text/markdown'
+      );
+      setReportStatus('Markdown report downloaded.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Report download failed.');
+    }
+  };
+
+  const handleCopyReport = async () => {
+    if (!currentAudit) return;
+    setReportStatus(null);
+    try {
+      await copyText(buildExportableAuditReport(currentAudit, history));
+      setReportStatus('Markdown report copied.');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Report copy failed.');
     }
   };
 
@@ -798,6 +867,7 @@ export const App: React.FC = () => {
                   <ScoreGauge score={auditData.score} size={140} />
                 </div>
                 <LighthouseCategories auditData={auditData} onOpenAudits={() => setTab('audits')} />
+                <RegressionWatchPanel history={history} current={currentAudit} compact />
                 <MetricsGrid vitals={auditData.metrics.vitals} />
                 {auditData.rootCauseStory && (
                   <div className="rounded-lg border border-perf-border bg-perf-surface p-3">
