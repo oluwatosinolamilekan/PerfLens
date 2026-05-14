@@ -6,9 +6,11 @@ import { AuditResults } from '../components/AuditResults';
 import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
+import { RegressionExplainer } from '../components/RegressionExplainer';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
+import { sendRuntimeMessage } from '../utils/chrome-api';
 import { exportHistory, getSettings } from '../utils/storage';
 import type { HistoryExportScope } from '../utils/storage';
 import type { AuditReport, AuditResult, Message, PerformanceMetrics, RootCauseStory, Settings, Suggestion } from '../utils/types';
@@ -520,7 +522,10 @@ const App: React.FC = () => {
 
   const fetchAuditData = useCallback(async () => {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendRuntimeMessage<{
+        audit?: AuditReport;
+        error?: string;
+      }>({
         type: 'GET_CURRENT_AUDIT',
         payload: { tabId: inspectedTabId },
       } as Message);
@@ -538,7 +543,7 @@ const App: React.FC = () => {
         pageUrlRef.current = audit.url;
         setPageUrl(audit.url);
 
-        const historyResponse = await chrome.runtime.sendMessage({
+        const historyResponse = await sendRuntimeMessage<{ history?: AuditReport[] }>({
           type: 'GET_AUDIT',
           payload: { url: audit.url },
         } as Message);
@@ -558,12 +563,15 @@ const App: React.FC = () => {
     setAuditError(null);
     try {
       const inspectedUrl = await refreshInspectedUrl();
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendRuntimeMessage<{ success?: boolean; error?: string }>({
         type: 'RE_AUDIT',
         payload: { tabId: inspectedTabId, url: inspectedUrl },
       } as Message);
       if (response?.success === false) {
         throw new Error(response.error || 'Audit failed.');
+      }
+      if (!response) {
+        throw new Error('Extension messaging is unavailable. Reload the extension and try again.');
       }
       await new Promise((resolve) => setTimeout(resolve, 2500));
       await fetchAuditData();
@@ -889,8 +897,11 @@ const App: React.FC = () => {
             )}
 
             {tab === 'history' && (
-              <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
-                <HistoryChart history={history} />
+              <div className="space-y-3">
+                <RegressionExplainer history={history} />
+                <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
+                  <HistoryChart history={history} />
+                </div>
               </div>
             )}
 

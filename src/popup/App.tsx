@@ -5,10 +5,12 @@ import { AuditResults } from '../components/AuditResults';
 import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
+import { RegressionExplainer } from '../components/RegressionExplainer';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
+import { getRuntime, getTabs, sendRuntimeMessage } from '../utils/chrome-api';
 import { exportHistory, getSettings } from '../utils/storage';
 import type { HistoryExportScope } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
@@ -334,7 +336,10 @@ export const App: React.FC = () => {
 
   const fetchAuditData = useCallback(async () => {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendRuntimeMessage<{
+        audit?: AuditReport;
+        error?: string;
+      }>({
         type: 'GET_CURRENT_AUDIT',
       } as Message);
 
@@ -357,15 +362,16 @@ export const App: React.FC = () => {
         setAuditError(response.error);
       }
 
-      const [activeTab] = await chrome.tabs.query({
+      const tabsApi = getTabs();
+      const [activeTab] = await (tabsApi?.query({
         active: true,
         currentWindow: true,
-      });
+      }) ?? []);
 
       if (activeTab?.url) {
         setCurrentUrl(activeTab.url);
 
-        const historyResponse = await chrome.runtime.sendMessage({
+        const historyResponse = await sendRuntimeMessage<{ history?: AuditReport[] }>({
           type: 'GET_AUDIT',
           payload: { url: activeTab.url },
         } as Message);
@@ -393,17 +399,23 @@ export const App: React.FC = () => {
         fetchAuditData();
       }
     };
-    chrome.runtime.onMessage.addListener(handleMessage);
-    return () => chrome.runtime.onMessage.removeListener(handleMessage);
+    const runtime = getRuntime();
+    runtime?.onMessage?.addListener(handleMessage);
+    return () => runtime?.onMessage?.removeListener(handleMessage);
   }, [fetchAuditData]);
 
   const handleReaudit = async () => {
     setReauditing(true);
     setAuditError(null);
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'RE_AUDIT' } as Message);
+      const response = await sendRuntimeMessage<{ success?: boolean; error?: string }>(
+        { type: 'RE_AUDIT' } as Message
+      );
       if (response?.success === false) {
         throw new Error(response.error || 'Audit failed.');
+      }
+      if (!response) {
+        throw new Error('Extension messaging is unavailable. Reload the extension and try again.');
       }
       await new Promise((r) => setTimeout(r, 3000));
       await fetchAuditData();
@@ -608,7 +620,7 @@ export const App: React.FC = () => {
                 {platformAuditing ? 'Running...' : 'Platform'}
               </button>
               <button
-                onClick={() => chrome.runtime.openOptionsPage()}
+                onClick={() => getRuntime()?.openOptionsPage?.()}
                 className="p-1 text-perf-muted hover:text-perf-text transition-colors rounded-md hover:bg-perf-highlight"
                 title="Settings"
               >
@@ -885,7 +897,12 @@ export const App: React.FC = () => {
               />
             )}
 
-            {tab === 'history' && <HistoryChart history={history} />}
+            {tab === 'history' && (
+              <div className="space-y-3">
+                <RegressionExplainer history={history} compact />
+                <HistoryChart history={history} />
+              </div>
+            )}
 
             {tab === 'export' && (
               <div className="space-y-3">

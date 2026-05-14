@@ -7,6 +7,7 @@ import {
   exportHistory,
   getAllHistory,
 } from '../utils/storage';
+import { getTabs, sendTabMessage } from '../utils/chrome-api';
 import type { HistoryExportScope } from '../utils/storage';
 import type { Settings, Message, AIAgent, AuditReport } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
@@ -86,10 +87,11 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     async function loadOptions() {
+      const tabsApi = getTabs();
       const [s, history, tabs] = await Promise.all([
         getSettings(),
         getAllHistory(),
-        chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []),
+        tabsApi?.query({ active: true, currentWindow: true }).catch(() => []) ?? Promise.resolve([]),
       ]);
       const urls = Object.entries(history as Record<string, AuditReport[]>)
         .sort(([, a], [, b]) => (b[0]?.timestamp ?? 0) - (a[0]?.timestamp ?? 0))
@@ -123,9 +125,10 @@ export const App: React.FC = () => {
     setTimeout(() => setSaved(false), 2000);
 
     try {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabsApi = getTabs();
+      const [activeTab] = await (tabsApi?.query({ active: true, currentWindow: true }) ?? []);
       if (activeTab?.id) {
-        chrome.tabs.sendMessage(activeTab.id, {
+        await sendTabMessage(activeTab.id, {
           type: 'SETTINGS_UPDATED',
           payload: updated,
         } as Message);

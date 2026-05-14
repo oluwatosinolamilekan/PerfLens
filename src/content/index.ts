@@ -12,6 +12,22 @@ import type { PerformanceMetrics, Message, Settings, RootCauseStory } from '../u
 let hasCollected = false;
 let floatingBadge: HTMLElement | null = null;
 
+function getRuntime(): typeof chrome.runtime | null {
+  if (typeof chrome === 'undefined') return null;
+  return chrome.runtime ?? null;
+}
+
+function getStorage(): typeof chrome.storage.local | null {
+  if (typeof chrome === 'undefined') return null;
+  return chrome.storage?.local ?? null;
+}
+
+async function sendRuntimeMessage<T = unknown>(message: Message): Promise<T | undefined> {
+  const runtime = getRuntime();
+  if (!runtime?.sendMessage) return undefined;
+  return runtime.sendMessage(message) as Promise<T>;
+}
+
 async function collectAllMetrics(): Promise<PerformanceMetrics> {
   const navigation = collectNavigationTiming();
   const vitals = await collectWebVitals();
@@ -50,14 +66,7 @@ async function performCollection(): Promise<void> {
       rootCauseStory,
     };
 
-    chrome.runtime.sendMessage(
-      { type: 'METRICS_COLLECTED', payload } as Message,
-      () => {
-        if (chrome.runtime.lastError) {
-          // extension context invalidated
-        }
-      }
-    );
+    await sendRuntimeMessage({ type: 'METRICS_COLLECTED', payload } as Message);
 
     hasCollected = true;
     updateFloatingBadge(metrics.score);
@@ -124,7 +133,9 @@ function createFloatingBadge(): HTMLElement {
   container.title = 'PerfLens - Performance Score';
 
   container.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'RE_AUDIT' } as Message);
+    sendRuntimeMessage({ type: 'RE_AUDIT' } as Message).catch(() => {
+      // extension context invalidated
+    });
   });
 
   shadow.appendChild(style);
@@ -161,7 +172,9 @@ function removeFloatingBadge(): void {
 
 async function initBadge(): Promise<void> {
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'GET_CURRENT_AUDIT' } as Message);
+    const response = await sendRuntimeMessage<{ audit?: unknown }>(
+      { type: 'GET_CURRENT_AUDIT' } as Message
+    );
     if (response?.audit) {
       return;
     }
@@ -170,7 +183,9 @@ async function initBadge(): Promise<void> {
   }
 
   try {
-    const result = await chrome.storage.local.get('perflens_settings');
+    const storage = getStorage();
+    if (!storage) return;
+    const result = await storage.get('perflens_settings');
     const settings: Settings = result.perflens_settings;
     if (settings?.showBadge) {
       if (!floatingBadge) {
@@ -200,7 +215,9 @@ function observeCLS(): void {
   }
 }
 
-chrome.runtime.onMessage.addListener(
+const runtime = getRuntime();
+
+runtime?.onMessage?.addListener(
   (message: Message, _sender, sendResponse) => {
     switch (message.type) {
       case 'COLLECT_METRICS': {
