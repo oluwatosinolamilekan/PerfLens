@@ -125,7 +125,7 @@ export const App: React.FC = () => {
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (activeTab?.id) {
-        chrome.tabs.sendMessage(activeTab.id, {
+        await chrome.tabs.sendMessage(activeTab.id, {
           type: 'SETTINGS_UPDATED',
           payload: updated,
         } as Message);

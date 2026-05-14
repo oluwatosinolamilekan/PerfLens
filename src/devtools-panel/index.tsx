@@ -6,6 +6,7 @@ import { AuditResults } from '../components/AuditResults';
 import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
+import { RegressionExplainer } from '../components/RegressionExplainer';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
@@ -925,7 +926,7 @@ const App: React.FC = () => {
 
             {tab === 'history' && (
               <div className="space-y-4">
-                <RegressionWatchPanel history={history} current={currentAudit} />
+                <RegressionExplainer history={history} />
                 <div className="rounded-lg border border-perf-border bg-perf-surface p-4">
                   <HistoryChart history={history} />
                 </div>
