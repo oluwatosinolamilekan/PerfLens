@@ -5,12 +5,14 @@ import { AuditResults } from '../components/AuditResults';
 import { FixItPacketActions } from '../components/FixItPacketActions';
 import { SuggestionsPanel } from '../components/SuggestionsPanel';
 import { HistoryChart } from '../components/HistoryChart';
+import { RegressionExplainer } from '../components/RegressionExplainer';
 import { ResourceBreakdown } from '../components/ResourceBreakdown';
 import { PerfLensLogo } from '../components/PerfLensLogo';
 import { RegressionWatchPanel } from '../components/RegressionWatchPanel';
 import { getFrameworkLogo } from '../assets/framework-logos';
 import { inferProjectName } from '../utils/ai-fix';
 import { exportHistory, getSettings } from '../utils/storage';
+import { buildExportableAuditReport } from '../utils/regression-report';
 import type { HistoryExportScope } from '../utils/storage';
 import type { AuditReport, PerformanceMetrics, AuditResult, Suggestion, Message, Settings, RootCauseStory } from '../utils/types';
 import { DEFAULT_SETTINGS } from '../utils/types';
@@ -96,43 +98,6 @@ function getScoreTone(score: number): string {
   if (score >= 90) return 'text-perf-good border-perf-good/30 bg-perf-good/10';
   if (score >= 50) return 'text-perf-moderate border-perf-moderate/30 bg-perf-moderate/10';
   return 'text-perf-poor border-perf-poor/30 bg-perf-poor/10';
-}
-
-function filenamePart(value: string): string {
-  return value
-    .replace(/^https?:\/\//i, '')
-    .replace(/^www\./i, '')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase()
-    .slice(0, 70);
-}
-
-function downloadTextFile(filename: string, text: string, mimeType: string): void {
-  const blob = new Blob([text], { type: mimeType });
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-
-  link.href = objectUrl;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
-}
-
-async function copyText(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  textarea.remove();
 }
 
 function getLighthouseCategories(auditData: AuditData) {
@@ -955,7 +920,12 @@ export const App: React.FC = () => {
               />
             )}
 
-            {tab === 'history' && <HistoryChart history={history} />}
+            {tab === 'history' && (
+              <div className="space-y-3">
+                <RegressionExplainer history={history} compact />
+                <HistoryChart history={history} />
+              </div>
+            )}
 
             {tab === 'export' && (
               <div className="space-y-3">
